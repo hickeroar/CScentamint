@@ -5,6 +5,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CScentamint", "CScentamint\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CScentamint.Tests", "CScentamint.Tests\CScentamint.Tests.csproj", "{FC2580F5-51C0-4B13-90C7-CC96C269F2FF}"
 EndProject
+Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "CScentamint.Azure", "CScentamint.Azure\CScentamint.Azure.ccproj", "{68B1D10A-134E-4C41-9F01-E74CB47B2444}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -19,6 +21,10 @@ Global
 		{FC2580F5-51C0-4B13-90C7-CC96C269F2FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC2580F5-51C0-4B13-90C7-CC96C269F2FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC2580F5-51C0-4B13-90C7-CC96C269F2FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68B1D10A-134E-4C41-9F01-E74CB47B2444}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68B1D10A-134E-4C41-9F01-E74CB47B2444}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68B1D10A-134E-4C41-9F01-E74CB47B2444}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68B1D10A-134E-4C41-9F01-E74CB47B2444}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
