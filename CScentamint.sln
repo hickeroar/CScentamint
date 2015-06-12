@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CScentamint.Tests", "CScent
 EndProject
 Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "CScentamint.Azure", "CScentamint.Azure\CScentamint.Azure.ccproj", "{68B1D10A-134E-4C41-9F01-E74CB47B2444}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CScentamint.Bayes", "CScentamint.Bayes\CScentamint.Bayes.csproj", "{CF766C24-7324-47B7-8867-82F002C35841}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,6 +27,10 @@ Global
 		{68B1D10A-134E-4C41-9F01-E74CB47B2444}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{68B1D10A-134E-4C41-9F01-E74CB47B2444}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{68B1D10A-134E-4C41-9F01-E74CB47B2444}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF766C24-7324-47B7-8867-82F002C35841}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF766C24-7324-47B7-8867-82F002C35841}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF766C24-7324-47B7-8867-82F002C35841}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF766C24-7324-47B7-8867-82F002C35841}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
