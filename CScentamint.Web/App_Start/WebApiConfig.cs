@@ -8,7 +8,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web.Http;
 
-namespace CScentamint
+namespace CScentamint.Web
 {
     public static class WebApiConfig
     {
@@ -50,7 +50,7 @@ namespace CScentamint
         public static void Register(HttpConfiguration config)
         {
             config.Routes.MapHttpRoute(
-                name: "DefaultApi",
+                name: "CScentamint",
                 routeTemplate: "{controller}/{category}",
                 defaults: new { controller = "Home", category = RouteParameter.Optional }
             );

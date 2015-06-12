@@ -37,22 +37,22 @@
     <ServiceConfiguration Include="ServiceConfiguration.Cloud.cscfg" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CScentamint\CScentamint.csproj">
-      <Name>CScentamint</Name>
+    <Folder Include="CScentamint.WebContent\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="CScentamint.WebContent\diagnostics.wadcfg">
+      <SubType>Content</SubType>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CScentamint.Web\CScentamint.Web.csproj">
+      <Name>CScentamint.Web</Name>
       <Project>{8d1ded56-eec1-46bc-aa63-5c1cd7291b1f}</Project>
       <Private>True</Private>
       <RoleType>Web</RoleType>
-      <RoleName>CScentamint</RoleName>
+      <RoleName>CScentamint.Web</RoleName>
       <UpdateDiagnosticsConnectionStringOnPublish>True</UpdateDiagnosticsConnectionStringOnPublish>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="CScentamintContent\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="CScentamintContent\diagnostics.wadcfg">
-      <SubType>Content</SubType>
-    </Content>
   </ItemGroup>
   <!-- Import the target files for this project template -->
   <PropertyGroup>

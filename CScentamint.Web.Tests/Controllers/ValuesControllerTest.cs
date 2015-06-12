@@ -6,9 +6,9 @@ using System.Text;
 using System.Web.Http;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using CScentamint;
-using CScentamint.Controllers;
+using CScentamint.Web.Controllers;
 
-namespace CScentamint.Tests.Controllers
+namespace CScentamint.Web.Tests.Controllers
 {
     [TestClass]
     public class ValuesControllerTest

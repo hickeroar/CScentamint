@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Web.Http;
 using CScentamint.Bayes;
 
-namespace CScentamint.Controllers
+namespace CScentamint.Web.Controllers
 {
     public class TrainController : ApiController
     {
