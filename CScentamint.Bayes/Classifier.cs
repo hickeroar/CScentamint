@@ -8,11 +8,14 @@ namespace CScentamint.Bayes
 {
     public class Classifier
     {
-        public Dictionary<string, Dictionary<string, int>> Categories;
+        public static Dictionary<string, Dictionary<string, int>> Categories;
 
         public Classifier()
         {
-            this.Categories = new Dictionary<string, Dictionary<string, int>>();
+            if (Classifier.Categories == null)
+            {
+                Classifier.Categories = new Dictionary<string, Dictionary<string, int>>();
+            }
         }
 
         /// <summary>
@@ -21,7 +24,7 @@ namespace CScentamint.Bayes
         /// <param name="name">The name of the category we want to add</param>
         protected void AddCategory(string name)
         {
-            this.Categories.Add(name, new Dictionary<string, int>());
+            Classifier.Categories.Add(name, new Dictionary<string, int>());
         }
 
         /// <summary>
@@ -32,7 +35,7 @@ namespace CScentamint.Bayes
         public void TrainCategory(string category, string text)
         {
             // Adding the category if it doesn't exist
-            if (!this.Categories.ContainsKey(category))
+            if (!Classifier.Categories.ContainsKey(category))
             {
                 this.AddCategory(category);
             }
@@ -41,13 +44,13 @@ namespace CScentamint.Bayes
             foreach (var token in this.Tokenize(text))
             {
                 // If this token doesn't exist in this category yet, we add it.
-                if (!this.Categories[category].ContainsKey(token))
+                if (!Classifier.Categories[category].ContainsKey(token))
                 {
-                    this.Categories[category].Add(token, 0);
+                    Classifier.Categories[category].Add(token, 0);
                 }
 
                 // Each instance of a token increments its count (weight) in a given category
-                this.Categories[category][token]++;
+                Classifier.Categories[category][token]++;
             }
         }
 
@@ -59,7 +62,7 @@ namespace CScentamint.Bayes
         public void UntrainCategory(string category, string text)
         {
             // If this category doesn't exist, we just return
-            if (!this.Categories.ContainsKey(category))
+            if (!Classifier.Categories.ContainsKey(category))
             {
                 return;
             }
@@ -68,19 +71,19 @@ namespace CScentamint.Bayes
             foreach (var token in this.Tokenize(text))
             {
                 // If this token doesn't exist in this category, we just skip it
-                if (!this.Categories[category].ContainsKey(token))
+                if (!Classifier.Categories[category].ContainsKey(token))
                 {
                     continue;
                 }
 
                 // We don't train below zero.
-                if (this.Categories[category][token] == 0)
+                if (Classifier.Categories[category][token] == 0)
                 {
                     continue;
                 }
 
                 // Each instance of a token decreases its count (weight) in a given category
-                this.Categories[category][token]--;
+                Classifier.Categories[category][token]--;
             }
         }
 

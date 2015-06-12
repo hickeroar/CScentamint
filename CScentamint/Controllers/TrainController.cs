@@ -5,39 +5,28 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using CScentamint.Bayes;
 
 namespace CScentamint.Controllers
 {
     public class TrainController : ApiController
     {
         // GET api/values
-        public ExpandoObject Get()
+        /* public ExpandoObject Get()
         {
             dynamic jsonObject = new ExpandoObject();
             jsonObject.test = "foo";
 
             return jsonObject;
-        }
+        }*/
 
-        // GET api/values/5
-        public int Get(int id)
+        // POST train/category
+        public HttpResponseMessage Post(string category, [FromBody]string sample)
         {
-            return 3;
-        }
+            var classifier = new Classifier();
+            classifier.TrainCategory(category, sample);
 
-        // POST api/values
-        public void Post([FromBody]string value)
-        {
-        }
-
-        // PUT api/values/5
-        public void Put(int id, [FromBody]string value)
-        {
-        }
-
-        // DELETE api/values/5
-        public void Delete(int id)
-        {
+            return this.Request.CreateResponse(HttpStatusCode.NoContent);
         }
     }
 }
