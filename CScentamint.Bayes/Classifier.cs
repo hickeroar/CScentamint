@@ -8,13 +8,20 @@ namespace CScentamint.Bayes
 {
     public class Classifier
     {
+        // The categories 
         public static Dictionary<string, Dictionary<string, int>> Categories;
+        public static Dictionary<string, Dictionary<string, float>> Probabilities;
 
         public Classifier()
         {
             if (Classifier.Categories == null)
             {
                 Classifier.Categories = new Dictionary<string, Dictionary<string, int>>();
+            }
+
+            if (Classifier.Probabilities == null)
+            {
+                Classifier.Probabilities = new Dictionary<string, Dictionary<string, float>>();
             }
         }
 
@@ -25,6 +32,63 @@ namespace CScentamint.Bayes
         protected void AddCategory(string name)
         {
             Classifier.Categories.Add(name, new Dictionary<string, int>());
+        }
+
+        /// <summary>
+        /// Calculates/Caches per category probabilities.
+        /// Essentially we're saving probabilities that any token will and won't be in a given category.
+        /// </summary>
+        protected void CalculateCategoryProbabilities()
+        {
+            int totalTally = 0;
+            var tokenCounts = new Dictionary<string, int>();
+            var probabilities = new Dictionary<string, float>();
+
+            // Calculating a total tally as well as per category totals
+            foreach (var category in Classifier.Categories)
+            {
+                var cat = category.Key;
+                Dictionary<string, int> tokens = category.Value;
+
+                totalTally += tokens.Count;
+                tokenCounts[cat] = tokens.Count;
+            }
+
+            // Calculating a probability for each category (the chance that a given token is in each category)
+            foreach (var category in tokenCounts)
+            {
+                string cat = category.Key;
+                var count = category.Value;
+
+                if (totalTally > 0)
+                {
+                    probabilities[cat] = (float) count / (float) totalTally;
+                }
+                else
+                {
+                    probabilities[cat] = 0.0f;
+                }
+            }
+
+            // This should be 1.0, but we're doing the math because it's the right things to do.
+            float probSum = probabilities.Sum(x => x.Value);
+
+            // Saving probability values
+            foreach (var category in probabilities)
+            {
+                string cat = category.Key;
+                float prob = category.Value;
+
+                var catProbability = new Dictionary<string, float>();
+
+                // Probability that a given token is in this category
+                catProbability["prc"] = prob;
+
+                // Probability that a given token is NOT in this category
+                catProbability["prnc"] = probSum - prob;
+
+                Classifier.Probabilities[cat] = catProbability;
+            }
         }
 
         /// <summary>
@@ -52,6 +116,8 @@ namespace CScentamint.Bayes
                 // Each instance of a token increments its count (weight) in a given category
                 Classifier.Categories[category][token]++;
             }
+
+            this.CalculateCategoryProbabilities();
         }
 
         /// <summary>
@@ -85,6 +151,8 @@ namespace CScentamint.Bayes
                 // Each instance of a token decreases its count (weight) in a given category
                 Classifier.Categories[category][token]--;
             }
+
+            this.CalculateCategoryProbabilities();
         }
 
         /// <summary>
