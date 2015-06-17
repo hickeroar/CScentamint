@@ -14,15 +14,19 @@ namespace CScentamint.Bayes
 
         public Classifier()
         {
-            if (Classifier.Categories == null)
+            if (Classifier.Categories == null && Classifier.Probabilities == null)
             {
-                Classifier.Categories = new Dictionary<string, Dictionary<string, int>>();
+                this.InitStorage();
             }
+        }
 
-            if (Classifier.Probabilities == null)
-            {
-                Classifier.Probabilities = new Dictionary<string, Dictionary<string, float>>();
-            }
+        /// <summary>
+        /// Initializes the storage variables for categories and probabilities
+        /// </summary>
+        protected void InitStorage()
+        {
+            Classifier.Categories = new Dictionary<string, Dictionary<string, int>>();
+            Classifier.Probabilities = new Dictionary<string, Dictionary<string, float>>();
         }
 
         /// <summary>
@@ -153,6 +157,14 @@ namespace CScentamint.Bayes
             }
 
             this.CalculateCategoryProbabilities();
+        }
+
+        /// <summary>
+        /// Empties all token/probability storage
+        /// </summary>
+        public void Flush()
+        {
+            this.InitStorage();
         }
 
         /// <summary>
