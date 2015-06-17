@@ -1,2 +1,2 @@
 # CScentamint
-A web api providing naïve bayesian text classification and training.
+A trainable web api providing naïve bayesian text classification.
