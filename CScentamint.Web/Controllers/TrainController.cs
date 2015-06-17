@@ -10,15 +10,6 @@ namespace CScentamint.Web.Controllers
 {
     public class TrainController : ApiController
     {
-        // GET api/values
-        /* public ExpandoObject Get()
-        {
-            dynamic jsonObject = new ExpandoObject();
-            jsonObject.test = "foo";
-
-            return jsonObject;
-        }*/
-
         /// <summary>
         /// POST train/category
         /// Trains a category
