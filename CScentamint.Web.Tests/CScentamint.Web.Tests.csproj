@@ -113,8 +113,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Controllers\BaseControllerTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Controllers\ValuesControllerTest.cs" />
+    <Compile Include="Controllers\TrainControllerTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="App.config" />
@@ -123,6 +124,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CScentamint.Bayes\CScentamint.Bayes.csproj">
+      <Project>{cf766c24-7324-47b7-8867-82f002c35841}</Project>
+      <Name>CScentamint.Bayes</Name>
+    </ProjectReference>
     <ProjectReference Include="..\CScentamint.Web\CScentamint.Web.csproj">
       <Project>{8d1ded56-eec1-46bc-aa63-5c1cd7291b1f}</Project>
       <Name>CScentamint.Web</Name>
