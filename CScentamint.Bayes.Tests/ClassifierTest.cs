@@ -16,7 +16,7 @@ namespace CScentamint.Bayes.Tests
         }
 
         [TestMethod]
-        public void TestClassifierStaticStorageIsInitializedOnInstantiation()
+        public void Instantiation()
         {
             // Assert
             Assert.IsNull(Classifier.Categories);
