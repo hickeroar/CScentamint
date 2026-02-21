@@ -4,6 +4,7 @@ using Cscentamint.Core;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<ITextClassifier, InMemoryNaiveBayesClassifier>();
+builder.Services.AddSingleton<ITextTokenizer, DefaultTextTokenizer>();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddControllers();

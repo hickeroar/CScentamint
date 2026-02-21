@@ -133,17 +133,18 @@ public sealed class ClassifierTests
     }
 
     /// <summary>
-    /// Verifies priors can be recalculated when tokenization yields no learned tokens.
+    /// Verifies short tokens are retained by the default tokenizer pipeline.
     /// </summary>
     [Fact]
-    public void Train_WithOnlyShortTokens_ProducesNoScores()
+    public void Train_WithOnlyShortTokens_ProducesScores()
     {
         var classifier = new InMemoryNaiveBayesClassifier();
         classifier.Train("tiny", "a an to of");
 
         var scores = classifier.GetScores("a an to");
 
-        Assert.Empty(scores);
+        Assert.True(scores.TryGetValue("tiny", out var score));
+        Assert.True(score > 0f);
     }
 
     /// <summary>
@@ -166,9 +167,9 @@ public sealed class ClassifierTests
     public void CalculateBayesianProbability_ReturnsZero_WhenDenominatorIsZero()
     {
         var classifier = new InMemoryNaiveBayesClassifier();
-        classifier.Train("empty", "a an to");
+        classifier.Train("only", "topic");
 
-        var result = InvokeBayesianProbability(classifier, "empty", 1, 1);
+        var result = InvokeBayesianProbability(classifier, "only", 0, 1);
 
         Assert.Equal(0f, result);
     }
@@ -234,6 +235,33 @@ public sealed class ClassifierTests
         Assert.True(score > 0f);
     }
 
+    /// <summary>
+    /// Verifies classifier accepts an override tokenizer implementation.
+    /// </summary>
+    [Fact]
+    public void Classifier_UsesInjectedTokenizer()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier(new PrefixTokenizer());
+        classifier.Train("tech", "dotnet");
+
+        var result = classifier.Classify("d");
+
+        Assert.Equal("tech", result.PredictedCategory);
+    }
+
+    /// <summary>
+    /// Verifies training with empty text keeps a category with zero prior state safely.
+    /// </summary>
+    [Fact]
+    public void Train_EmptyText_ProducesNoScores()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Train("empty", string.Empty);
+
+        Assert.Empty(classifier.GetScores("anything"));
+        Assert.Null(classifier.Classify("anything").PredictedCategory);
+    }
+
     private static float InvokeBayesianProbability(
         InMemoryNaiveBayesClassifier classifier,
         string category,
@@ -248,5 +276,18 @@ public sealed class ClassifierTests
         var value = method!.Invoke(classifier, [category, tokenScore, totalTokenCount]);
         Assert.NotNull(value);
         return Assert.IsType<float>(value);
+    }
+
+    private sealed class PrefixTokenizer : ITextTokenizer
+    {
+        public IEnumerable<string> Tokenize(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return [];
+            }
+
+            return text.Select(character => character.ToString()).Distinct(StringComparer.OrdinalIgnoreCase);
+        }
     }
 }

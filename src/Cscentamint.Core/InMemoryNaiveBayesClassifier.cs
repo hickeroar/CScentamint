@@ -10,6 +10,16 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
     private static readonly Regex CategoryPattern = new("^[a-zA-Z0-9_-]{1,64}$", RegexOptions.Compiled);
     private readonly ReaderWriterLockSlim _stateLock = new();
     private readonly Dictionary<string, CategoryState> _categories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ITextTokenizer _tokenizer;
+
+    /// <summary>
+    /// Initializes a new in-memory classifier.
+    /// </summary>
+    /// <param name="tokenizer">Tokenizer used by train, untrain, score, and classify operations.</param>
+    public InMemoryNaiveBayesClassifier(ITextTokenizer? tokenizer = null)
+    {
+        _tokenizer = tokenizer ?? new DefaultTextTokenizer();
+    }
 
     /// <inheritdoc />
     public void Train(string category, string text)
@@ -26,7 +36,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
                 _categories[normalizedCategory] = categoryState;
             }
 
-            foreach (var tokenOccurrence in CountTokenOccurrences(Tokenize(normalizedText)))
+            foreach (var tokenOccurrence in CountTokenOccurrences(_tokenizer.Tokenize(normalizedText)))
             {
                 categoryState.TokenCounts[tokenOccurrence.Key] =
                     categoryState.TokenCounts.GetValueOrDefault(tokenOccurrence.Key) + tokenOccurrence.Value;
@@ -55,7 +65,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
                 return;
             }
 
-            foreach (var tokenOccurrence in CountTokenOccurrences(Tokenize(normalizedText)))
+            foreach (var tokenOccurrence in CountTokenOccurrences(_tokenizer.Tokenize(normalizedText)))
             {
                 if (!categoryState.TokenCounts.TryGetValue(tokenOccurrence.Key, out var currentTokenCount))
                 {
@@ -154,7 +164,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
 
     private IReadOnlyDictionary<string, float> ScoreUnsafe(string text)
     {
-        var tokenOccurrences = CountTokenOccurrences(Tokenize(text));
+        var tokenOccurrences = CountTokenOccurrences(_tokenizer.Tokenize(text));
         var workingScores = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var category in _categories.Keys)
@@ -235,13 +245,6 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         }
 
         return counts;
-    }
-
-    private static IEnumerable<string> Tokenize(string text)
-    {
-        return text
-            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(token => token.Length > 2);
     }
 
     private static string NormalizeText(string? text)

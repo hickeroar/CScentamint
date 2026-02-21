@@ -169,4 +169,46 @@ public sealed class ApiWorkflowTests(WebApplicationFactory<Program> factory)
         Assert.NotNull(payload);
         Assert.Equal("apple", payload.Category);
     }
+
+    /// <summary>
+    /// Verifies API classification uses normalized casing and punctuation splitting.
+    /// </summary>
+    [Fact]
+    public async Task Classify_UsesDefaultTokenizerNormalizationPipeline()
+    {
+        await client.DeleteAsync("/api/model");
+        await client.PostAsJsonAsync(
+            "/api/categories/ham/samples",
+            new TextDocumentRequest { Text = "hello world" });
+
+        var classifyResponse = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "HELLO, WORLD!" });
+        classifyResponse.EnsureSuccessStatusCode();
+
+        var payload = await classifyResponse.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("ham", payload.Category);
+    }
+
+    /// <summary>
+    /// Verifies API classification uses stemming for common English inflections.
+    /// </summary>
+    [Fact]
+    public async Task Classify_UsesDefaultTokenizerStemming()
+    {
+        await client.DeleteAsync("/api/model");
+        await client.PostAsJsonAsync(
+            "/api/categories/promo/samples",
+            new TextDocumentRequest { Text = "offer" });
+
+        var classifyResponse = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "offering offers offered" });
+        classifyResponse.EnsureSuccessStatusCode();
+
+        var payload = await classifyResponse.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("promo", payload.Category);
+    }
 }
