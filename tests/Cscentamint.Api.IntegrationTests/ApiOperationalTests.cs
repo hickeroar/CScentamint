@@ -126,6 +126,42 @@ public sealed class ApiOperationalTests(WebApplicationFactory<Program> factory)
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
     }
 
+    /// <summary>
+    /// Verifies unknown-length root requests still enforce the configured request body cap.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_UnknownLengthRequestBodyTooLarge_ReturnsPayloadTooLarge()
+    {
+        using var client = factory.CreateClient();
+        var largeText = new string('a', checked((int)RootEndpointRequestSizeMiddleware.MaxRequestBodyBytes + 1));
+
+        var response = await PostUnknownLengthTextAsync(client, "/classify", largeText);
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        var payload = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+        Assert.NotNull(payload);
+        Assert.True(payload.TryGetValue("error", out var error));
+        Assert.Equal("request body too large", error);
+    }
+
+    /// <summary>
+    /// Verifies unknown-length requests under the configured body cap still succeed.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_UnknownLengthRequestBodyWithinLimit_Succeeds()
+    {
+        using var client = factory.CreateClient();
+        await PostTextAsync(client, "/flush", string.Empty);
+        await PostTextAsync(client, "/train/ham", "meeting calendar");
+
+        var response = await PostUnknownLengthTextAsync(client, "/classify", "calendar meeting");
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<RootClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("ham", payload.Category);
+    }
+
     private static WebApplicationFactory<Program> CreateAuthFactory(WebApplicationFactory<Program> baseFactory)
     {
         return baseFactory.WithWebHostBuilder(builder =>
@@ -144,5 +180,37 @@ public sealed class ApiOperationalTests(WebApplicationFactory<Program> factory)
     {
         using var content = new StringContent(text, Encoding.UTF8, "text/plain");
         return await client.PostAsync(url, content);
+    }
+
+    private static async Task<HttpResponseMessage> PostUnknownLengthTextAsync(HttpClient client, string url, string text)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new UnknownLengthStringContent(text)
+        };
+
+        return await client.SendAsync(request);
+    }
+
+    private sealed class UnknownLengthStringContent : HttpContent
+    {
+        private readonly byte[] body;
+
+        public UnknownLengthStringContent(string text)
+        {
+            body = Encoding.UTF8.GetBytes(text);
+            Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            return stream.WriteAsync(body, 0, body.Length);
+        }
     }
 }
