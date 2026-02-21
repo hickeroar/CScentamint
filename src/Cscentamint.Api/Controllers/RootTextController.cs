@@ -6,21 +6,21 @@ using Microsoft.AspNetCore.Mvc;
 namespace Cscentamint.Api.Controllers;
 
 /// <summary>
-/// Provides gobayes-compatible endpoints while preserving existing API routes.
+/// Provides root text endpoints for train, score, classify, and model inspection.
 /// </summary>
 /// <param name="classifier">Classifier service.</param>
 [ApiController]
 [Route("")]
-public sealed class GobayesCompatController(ITextClassifier classifier) : ControllerBase
+public sealed class RootTextController(ITextClassifier classifier) : ControllerBase
 {
     /// <summary>
-    /// Returns gobayes-compatible category summaries.
+    /// Returns category summaries.
     /// </summary>
     [HttpGet("info")]
-    [ProducesResponseType(typeof(CompatInfoResponse), StatusCodes.Status200OK)]
-    public ActionResult<CompatInfoResponse> Info()
+    [ProducesResponseType(typeof(RootInfoResponse), StatusCodes.Status200OK)]
+    public ActionResult<RootInfoResponse> Info()
     {
-        return Ok(new CompatInfoResponse
+        return Ok(new RootInfoResponse
         {
             Categories = MapSummaries(classifier.GetSummaries())
         });
@@ -30,8 +30,8 @@ public sealed class GobayesCompatController(ITextClassifier classifier) : Contro
     /// Trains a category from raw request body text.
     /// </summary>
     [HttpPost("train/{category:regex(^[[-_A-Za-z0-9]]+$)}")]
-    [ProducesResponseType(typeof(CompatMutationResponse), StatusCodes.Status200OK)]
-    public async Task<ActionResult<CompatMutationResponse>> Train([FromRoute] string category)
+    [ProducesResponseType(typeof(RootMutationResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<RootMutationResponse>> Train([FromRoute] string category)
     {
         var text = await ReadBodyAsTextAsync();
         classifier.Train(category, text);
@@ -42,8 +42,8 @@ public sealed class GobayesCompatController(ITextClassifier classifier) : Contro
     /// Untrains a category from raw request body text.
     /// </summary>
     [HttpPost("untrain/{category:regex(^[[-_A-Za-z0-9]]+$)}")]
-    [ProducesResponseType(typeof(CompatMutationResponse), StatusCodes.Status200OK)]
-    public async Task<ActionResult<CompatMutationResponse>> Untrain([FromRoute] string category)
+    [ProducesResponseType(typeof(RootMutationResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<RootMutationResponse>> Untrain([FromRoute] string category)
     {
         var text = await ReadBodyAsTextAsync();
         classifier.Untrain(category, text);
@@ -54,12 +54,12 @@ public sealed class GobayesCompatController(ITextClassifier classifier) : Contro
     /// Classifies raw request body text.
     /// </summary>
     [HttpPost("classify")]
-    [ProducesResponseType(typeof(CompatClassificationResponse), StatusCodes.Status200OK)]
-    public async Task<ActionResult<CompatClassificationResponse>> Classify()
+    [ProducesResponseType(typeof(RootClassificationResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<RootClassificationResponse>> Classify()
     {
         var text = await ReadBodyAsTextAsync();
         var prediction = classifier.Classify(text);
-        return Ok(new CompatClassificationResponse
+        return Ok(new RootClassificationResponse
         {
             Category = prediction.PredictedCategory ?? string.Empty,
             Score = prediction.Score
@@ -81,28 +81,28 @@ public sealed class GobayesCompatController(ITextClassifier classifier) : Contro
     /// Flushes all classifier state.
     /// </summary>
     [HttpPost("flush")]
-    [ProducesResponseType(typeof(CompatMutationResponse), StatusCodes.Status200OK)]
-    public ActionResult<CompatMutationResponse> Flush()
+    [ProducesResponseType(typeof(RootMutationResponse), StatusCodes.Status200OK)]
+    public ActionResult<RootMutationResponse> Flush()
     {
         classifier.Reset();
         return Ok(CreateSuccessResponse());
     }
 
-    private CompatMutationResponse CreateSuccessResponse()
+    private RootMutationResponse CreateSuccessResponse()
     {
-        return new CompatMutationResponse
+        return new RootMutationResponse
         {
             Success = true,
             Categories = MapSummaries(classifier.GetSummaries())
         };
     }
 
-    private static IReadOnlyDictionary<string, CompatCategorySummaryResponse> MapSummaries(
+    private static IReadOnlyDictionary<string, RootCategorySummaryResponse> MapSummaries(
         IReadOnlyDictionary<string, CategorySummary> summaries)
     {
         return summaries.ToDictionary(
             pair => pair.Key,
-            pair => new CompatCategorySummaryResponse
+            pair => new RootCategorySummaryResponse
             {
                 TokenTally = pair.Value.TokenTally,
                 ProbNotInCat = pair.Value.ProbNotInCat,

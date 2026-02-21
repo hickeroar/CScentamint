@@ -1,12 +1,12 @@
 namespace Cscentamint.Api.Infrastructure;
 
 /// <summary>
-/// Enforces gobayes-style body size limits on compatibility endpoints.
+/// Enforces body size limits on root text endpoints.
 /// </summary>
-public sealed class CompatRequestSizeLimitMiddleware(RequestDelegate next)
+public sealed class RootEndpointRequestSizeMiddleware(RequestDelegate next)
 {
     /// <summary>
-    /// Maximum allowed request body bytes for gobayes compatibility endpoints.
+    /// Maximum allowed request body bytes for root text endpoints.
     /// </summary>
     public const long MaxRequestBodyBytes = 1024 * 1024;
 

@@ -1,9 +1,9 @@
 namespace Cscentamint.Api.Contracts;
 
 /// <summary>
-/// Gobayes-compatible classify response contract.
+/// Classification response contract for root text endpoints.
 /// </summary>
-public sealed record CompatClassificationResponse
+public sealed record RootClassificationResponse
 {
     /// <summary>
     /// Gets the predicted category or empty string when no prediction is available.

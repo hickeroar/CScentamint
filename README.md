@@ -3,7 +3,7 @@
 Trainable Naive Bayes text classification for .NET 10 with:
 
 - native ASP.NET Core routes under `/api/*`
-- gobayes-compatible routes at the root (`/train`, `/classify`, etc.)
+- root text endpoints (`/train`, `/classify`, etc.)
 - strict quality gates (100% line/branch/method coverage in both test projects)
 
 The repository is CLI-first for VSCode/Cursor workflows (no `.sln` file).
@@ -11,9 +11,9 @@ The repository is CLI-first for VSCode/Cursor workflows (no `.sln` file).
 ## Project layout
 
 - `src/Cscentamint.Core`: classifier logic, tokenization pipeline, persistence model.
-- `src/Cscentamint.Api`: HTTP layer, compatibility endpoints, auth/probe middleware.
-- `tests/Cscentamint.Core.UnitTests`: core behavior, persistence, property tests.
-- `tests/Cscentamint.Api.IntegrationTests`: end-to-end API and compatibility coverage.
+- `src/Cscentamint.Api`: HTTP layer, root text endpoints, auth/probe middleware.
+- `tests/Cscentamint.Core.UnitTests`: core behavior, persistence, and property tests.
+- `tests/Cscentamint.Api.IntegrationTests`: end-to-end API coverage.
 
 ## Requirements
 
@@ -42,7 +42,7 @@ Request shape:
 - `POST /api/classifications` -> `{ "category": "<category>|null", "score": <float> }`
 - `DELETE /api/model` -> reset model, `204`
 
-### Gobayes compatibility API (root routes, raw text body)
+### Root text API (raw text body)
 
 - `GET /info` -> `{ "categories": { "<name>": { "tokenTally", "probNotInCat", "probInCat" } } }`
 - `POST /train/{category}` -> `{ "success": true, "categories": { ... } }`
@@ -58,15 +58,15 @@ Request shape:
 - Optional bearer auth:
   - Configure `Auth:Token` (or `auth-token`).
   - When configured, non-probe endpoints require `Authorization: Bearer <token>`.
-  - Unauthorized response: `401` with `WWW-Authenticate: Bearer realm="gobayes"`.
+  - Unauthorized response: `401` with `WWW-Authenticate: Bearer realm="cscentamint"`.
 - Probe endpoints (`/healthz`, `/readyz`) are intentionally unauthenticated.
-- Compatibility endpoints enforce a 1 MiB request-body limit and return `413` with:
+- Root text endpoints enforce a 1 MiB request-body limit and return `413` with:
   - `{ "error": "request body too large" }`
 - Category names must match `^[-_A-Za-z0-9]+$` semantics.
 
 ## Tokenization and scoring
 
-Default pipeline is gobayes-like:
+Default pipeline:
 
 - Unicode normalization (NFKC)
 - lowercasing
@@ -109,7 +109,7 @@ CI (`.github/workflows/tests-and-coverage.yml`) includes:
 
 - coverage-gated test job
 - static analysis/build job
-- scheduled/manual parity smoke job (property + concurrency stress slices)
+- scheduled/manual extended smoke job (property + concurrency stress slices)
 
 ## Developer workflow
 

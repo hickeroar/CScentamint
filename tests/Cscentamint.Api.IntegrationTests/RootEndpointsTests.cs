@@ -8,15 +8,15 @@ using Xunit;
 namespace Cscentamint.Api.IntegrationTests;
 
 /// <summary>
-/// Compatibility tests for gobayes-style endpoints.
+/// Integration tests for root text endpoints.
 /// </summary>
-public sealed class GobayesCompatibilityTests(WebApplicationFactory<Program> factory)
+public sealed class RootEndpointsTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient client = factory.CreateClient();
 
     /// <summary>
-    /// Verifies train and info endpoints expose gobayes-compatible payloads.
+    /// Verifies train and info endpoints return category summaries.
     /// </summary>
     [Fact]
     public async Task Train_ThenInfo_ReturnsCategorySummaries()
@@ -25,14 +25,14 @@ public sealed class GobayesCompatibilityTests(WebApplicationFactory<Program> fac
         var trainResponse = await PostTextAsync("/train/spam", "buy now limited offer");
         trainResponse.EnsureSuccessStatusCode();
 
-        var trainPayload = await trainResponse.Content.ReadFromJsonAsync<CompatMutationResponse>();
+        var trainPayload = await trainResponse.Content.ReadFromJsonAsync<RootMutationResponse>();
         Assert.NotNull(trainPayload);
         Assert.True(trainPayload.Success);
         Assert.True(trainPayload.Categories.ContainsKey("spam"));
 
         var infoResponse = await client.GetAsync("/info");
         infoResponse.EnsureSuccessStatusCode();
-        var infoPayload = await infoResponse.Content.ReadFromJsonAsync<CompatInfoResponse>();
+        var infoPayload = await infoResponse.Content.ReadFromJsonAsync<RootInfoResponse>();
 
         Assert.NotNull(infoPayload);
         Assert.True(infoPayload.Categories.TryGetValue("spam", out var summary));
@@ -40,7 +40,7 @@ public sealed class GobayesCompatibilityTests(WebApplicationFactory<Program> fac
     }
 
     /// <summary>
-    /// Verifies classify and score endpoints return gobayes-compatible data.
+    /// Verifies classify and score endpoints return expected data.
     /// </summary>
     [Fact]
     public async Task ClassifyAndScore_ReturnExpectedPayloads()
@@ -50,7 +50,7 @@ public sealed class GobayesCompatibilityTests(WebApplicationFactory<Program> fac
 
         var classifyResponse = await PostTextAsync("/classify", "calendar meeting");
         classifyResponse.EnsureSuccessStatusCode();
-        var classifyPayload = await classifyResponse.Content.ReadFromJsonAsync<CompatClassificationResponse>();
+        var classifyPayload = await classifyResponse.Content.ReadFromJsonAsync<RootClassificationResponse>();
         Assert.NotNull(classifyPayload);
         Assert.Equal("ham", classifyPayload.Category);
         Assert.True(classifyPayload.Score > 0f);
@@ -64,7 +64,7 @@ public sealed class GobayesCompatibilityTests(WebApplicationFactory<Program> fac
     }
 
     /// <summary>
-    /// Verifies untrain and flush reset compatibility behavior.
+    /// Verifies untrain and flush reset model state.
     /// </summary>
     [Fact]
     public async Task UntrainAndFlush_ClearsModelState()
@@ -75,21 +75,21 @@ public sealed class GobayesCompatibilityTests(WebApplicationFactory<Program> fac
 
         var classifyResponse = await PostTextAsync("/classify", "buy now");
         classifyResponse.EnsureSuccessStatusCode();
-        var classifyPayload = await classifyResponse.Content.ReadFromJsonAsync<CompatClassificationResponse>();
+        var classifyPayload = await classifyResponse.Content.ReadFromJsonAsync<RootClassificationResponse>();
         Assert.NotNull(classifyPayload);
         Assert.Equal(string.Empty, classifyPayload.Category);
         Assert.Equal(0f, classifyPayload.Score);
 
         var flushResponse = await PostTextAsync("/flush", string.Empty);
         flushResponse.EnsureSuccessStatusCode();
-        var flushPayload = await flushResponse.Content.ReadFromJsonAsync<CompatMutationResponse>();
+        var flushPayload = await flushResponse.Content.ReadFromJsonAsync<RootMutationResponse>();
         Assert.NotNull(flushPayload);
         Assert.True(flushPayload.Success);
         Assert.Empty(flushPayload.Categories);
     }
 
     /// <summary>
-    /// Verifies invalid compatibility route categories return 404.
+    /// Verifies invalid route categories return 404.
     /// </summary>
     [Fact]
     public async Task Train_InvalidCategoryRoute_ReturnsNotFound()
@@ -112,10 +112,10 @@ public sealed class GobayesCompatibilityTests(WebApplicationFactory<Program> fac
     }
 
     /// <summary>
-    /// Verifies compatibility endpoints handle concurrent train/score traffic.
+    /// Verifies root endpoints handle concurrent train/score traffic.
     /// </summary>
     [Fact]
-    public async Task CompatEndpoints_HandleConcurrentTrainAndScoreRequests()
+    public async Task RootEndpoints_HandleConcurrentTrainAndScoreRequests()
     {
         await PostTextAsync("/flush", string.Empty);
 

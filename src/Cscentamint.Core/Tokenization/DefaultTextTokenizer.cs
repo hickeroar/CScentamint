@@ -4,7 +4,7 @@ using System.Text;
 namespace Cscentamint.Core;
 
 /// <summary>
-/// Default tokenizer pipeline inspired by gobayes behavior.
+/// Default tokenizer pipeline for Cscentamint.
 /// </summary>
 public sealed class DefaultTextTokenizer : ITextTokenizer
 {

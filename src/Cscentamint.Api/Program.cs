@@ -29,7 +29,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
-app.UseMiddleware<CompatRequestSizeLimitMiddleware>();
+app.UseMiddleware<RootEndpointRequestSizeMiddleware>();
 app.UseMiddleware<BearerTokenMiddleware>();
 
 var readinessState = app.Services.GetRequiredService<ReadinessState>();

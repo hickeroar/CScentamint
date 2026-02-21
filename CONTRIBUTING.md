@@ -37,14 +37,14 @@ CI runs:
 
 - coverage-gated tests
 - static analysis/build lane
-- parity smoke lane on `workflow_dispatch` and nightly schedule
+- extended smoke lane on `workflow_dispatch` and nightly schedule
 
 ## API conventions
 
 - Maintain both API surfaces:
   - native routes under `/api/*`
-  - gobayes-compatible root routes
-- Keep compatibility payloads and status behavior stable unless intentionally versioned.
+  - root text routes
+- Keep root endpoint payloads and status behavior stable unless intentionally versioned.
 
 ## Documentation expectations
 

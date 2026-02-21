@@ -1,9 +1,9 @@
 namespace Cscentamint.Api.Contracts;
 
 /// <summary>
-/// Gobayes-compatible category summary contract.
+/// Category summary contract for root text endpoints.
 /// </summary>
-public sealed record CompatCategorySummaryResponse
+public sealed record RootCategorySummaryResponse
 {
     /// <summary>
     /// Gets the total token tally in the category.

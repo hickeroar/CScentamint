@@ -1,9 +1,9 @@
 namespace Cscentamint.Api.Contracts;
 
 /// <summary>
-/// Gobayes-compatible train/untrain/flush response.
+/// Mutation response for root text endpoints.
 /// </summary>
-public sealed record CompatMutationResponse
+public sealed record RootMutationResponse
 {
     /// <summary>
     /// Gets a value indicating whether the operation succeeded.
@@ -13,5 +13,5 @@ public sealed record CompatMutationResponse
     /// <summary>
     /// Gets category summaries keyed by category name.
     /// </summary>
-    public required IReadOnlyDictionary<string, CompatCategorySummaryResponse> Categories { get; init; }
+    public required IReadOnlyDictionary<string, RootCategorySummaryResponse> Categories { get; init; }
 }

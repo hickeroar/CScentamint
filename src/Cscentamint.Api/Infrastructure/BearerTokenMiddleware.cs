@@ -27,7 +27,7 @@ public sealed class BearerTokenMiddleware(RequestDelegate next, IOptions<AuthOpt
         if (!TryGetBearerToken(context.Request, out var providedToken) || !FixedTimeEquals(configuredToken, providedToken))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            context.Response.Headers.WWWAuthenticate = "Bearer realm=\"gobayes\"";
+            context.Response.Headers.WWWAuthenticate = "Bearer realm=\"cscentamint\"";
             await context.Response.WriteAsJsonAsync(new { error = "unauthorized" });
             return;
         }

@@ -3,7 +3,7 @@ using Xunit;
 namespace Cscentamint.Core.UnitTests;
 
 /// <summary>
-/// Unit tests for default tokenizer behavior parity.
+/// Unit tests for default tokenizer behavior.
 /// </summary>
 public sealed class DefaultTextTokenizerTests
 {

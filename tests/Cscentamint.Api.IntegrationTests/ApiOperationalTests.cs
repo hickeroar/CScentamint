@@ -12,9 +12,9 @@ using Xunit;
 namespace Cscentamint.Api.IntegrationTests;
 
 /// <summary>
-/// Integration tests for auth, probes, readiness, and request-size parity behavior.
+/// Integration tests for auth, probes, readiness, and request-size behavior.
 /// </summary>
-public sealed class ApiOperationalParityTests(WebApplicationFactory<Program> factory)
+public sealed class ApiOperationalTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {
     /// <summary>
@@ -34,10 +34,10 @@ public sealed class ApiOperationalParityTests(WebApplicationFactory<Program> fac
     }
 
     /// <summary>
-    /// Verifies unauthorized requests are rejected with gobayes-compatible auth headers.
+    /// Verifies unauthorized requests are rejected with expected auth headers.
     /// </summary>
     [Fact]
-    public async Task CompatEndpoint_WithoutToken_ReturnsUnauthorized()
+    public async Task RootEndpoint_WithoutToken_ReturnsUnauthorized()
     {
         using var authFactory = CreateAuthFactory(factory);
         using var client = authFactory.CreateClient();
@@ -45,14 +45,14 @@ public sealed class ApiOperationalParityTests(WebApplicationFactory<Program> fac
         var response = await PostTextAsync(client, "/classify", "hello world");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("Bearer realm=\"gobayes\"", response.Headers.WwwAuthenticate.ToString());
+        Assert.Equal("Bearer realm=\"cscentamint\"", response.Headers.WwwAuthenticate.ToString());
     }
 
     /// <summary>
     /// Verifies non-bearer authorization headers are rejected.
     /// </summary>
     [Fact]
-    public async Task CompatEndpoint_WithNonBearerHeader_ReturnsUnauthorized()
+    public async Task RootEndpoint_WithNonBearerHeader_ReturnsUnauthorized()
     {
         using var authFactory = CreateAuthFactory(factory);
         using var client = authFactory.CreateClient();
@@ -67,7 +67,7 @@ public sealed class ApiOperationalParityTests(WebApplicationFactory<Program> fac
     /// Verifies bearer tokens with mismatched length are rejected.
     /// </summary>
     [Fact]
-    public async Task CompatEndpoint_WithWrongLengthBearerToken_ReturnsUnauthorized()
+    public async Task RootEndpoint_WithWrongLengthBearerToken_ReturnsUnauthorized()
     {
         using var authFactory = CreateAuthFactory(factory);
         using var client = authFactory.CreateClient();
@@ -82,7 +82,7 @@ public sealed class ApiOperationalParityTests(WebApplicationFactory<Program> fac
     /// Verifies authorized requests succeed when the bearer token matches configuration.
     /// </summary>
     [Fact]
-    public async Task CompatEndpoint_WithValidToken_Succeeds()
+    public async Task RootEndpoint_WithValidToken_Succeeds()
     {
         using var authFactory = CreateAuthFactory(factory);
         using var client = authFactory.CreateClient();
@@ -92,7 +92,7 @@ public sealed class ApiOperationalParityTests(WebApplicationFactory<Program> fac
         var response = await PostTextAsync(client, "/classify", "calendar meeting");
         response.EnsureSuccessStatusCode();
 
-        var payload = await response.Content.ReadFromJsonAsync<CompatClassificationResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<RootClassificationResponse>();
         Assert.NotNull(payload);
         Assert.Equal("ham", payload.Category);
     }
@@ -113,13 +113,13 @@ public sealed class ApiOperationalParityTests(WebApplicationFactory<Program> fac
     }
 
     /// <summary>
-    /// Verifies compatibility endpoints enforce the gobayes-sized request body cap.
+    /// Verifies root endpoints enforce the configured request body cap.
     /// </summary>
     [Fact]
-    public async Task CompatEndpoint_RequestBodyTooLarge_ReturnsPayloadTooLarge()
+    public async Task RootEndpoint_RequestBodyTooLarge_ReturnsPayloadTooLarge()
     {
         using var client = factory.CreateClient();
-        var largeText = new string('a', checked((int)CompatRequestSizeLimitMiddleware.MaxRequestBodyBytes + 1));
+        var largeText = new string('a', checked((int)RootEndpointRequestSizeMiddleware.MaxRequestBodyBytes + 1));
 
         var response = await PostTextAsync(client, "/classify", largeText);
 

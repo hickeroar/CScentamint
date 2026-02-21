@@ -3,9 +3,9 @@ using Xunit;
 namespace Cscentamint.Core.UnitTests;
 
 /// <summary>
-/// Baseline parity tests for behavior shared with gobayes.
+/// Baseline classifier behavior tests.
 /// </summary>
-public sealed class GobayesParityBaselineTests
+public sealed class ClassifierBaselineTests
 {
     /// <summary>
     /// Ensures unknown tokens do not produce any category scores.
