@@ -37,4 +37,10 @@ public interface ITextClassifier
     /// <param name="text">Text to classify.</param>
     /// <returns>Classification result containing the predicted category.</returns>
     ClassificationPrediction Classify(string text);
+
+    /// <summary>
+    /// Returns per-category summaries for compatibility and observability endpoints.
+    /// </summary>
+    /// <returns>Category summaries keyed by category name.</returns>
+    IReadOnlyDictionary<string, CategorySummary> GetSummaries();
 }

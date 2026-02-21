@@ -34,6 +34,7 @@ public sealed class ClassifierTests
         var result = classifier.Classify("awesome happy great");
 
         Assert.Equal("positive", result.PredictedCategory);
+        Assert.True(result.Score > 0f);
     }
 
     /// <summary>
@@ -259,7 +260,26 @@ public sealed class ClassifierTests
         classifier.Train("empty", string.Empty);
 
         Assert.Empty(classifier.GetScores("anything"));
-        Assert.Null(classifier.Classify("anything").PredictedCategory);
+        var prediction = classifier.Classify("anything");
+        Assert.Null(prediction.PredictedCategory);
+        Assert.Equal(0f, prediction.Score);
+    }
+
+    /// <summary>
+    /// Verifies summaries expose category token tally and prior probabilities.
+    /// </summary>
+    [Fact]
+    public void GetSummaries_ReturnsCategorySnapshot()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Train("music", "guitar riff");
+
+        var summaries = classifier.GetSummaries();
+
+        Assert.True(summaries.TryGetValue("music", out var summary));
+        Assert.Equal(2, summary.TokenTally);
+        Assert.Equal(1f, summary.ProbInCat);
+        Assert.Equal(0f, summary.ProbNotInCat);
     }
 
     private static float InvokeBayesianProbability(

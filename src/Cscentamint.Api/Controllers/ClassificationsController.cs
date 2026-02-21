@@ -23,6 +23,6 @@ public sealed class ClassificationsController(ITextClassifier classifier) : Cont
     public ActionResult<ClassificationResponse> Create([FromBody] TextDocumentRequest request)
     {
         var prediction = classifier.Classify(request.Text);
-        return Ok(new ClassificationResponse(prediction.PredictedCategory));
+        return Ok(new ClassificationResponse(prediction.PredictedCategory, prediction.Score));
     }
 }

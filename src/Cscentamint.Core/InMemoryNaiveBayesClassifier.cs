@@ -154,7 +154,27 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
                 }
             }
 
-            return new ClassificationPrediction(highestCategory);
+            return new ClassificationPrediction(highestCategory, highestScore);
+        }
+        finally
+        {
+            _stateLock.ExitReadLock();
+        }
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, CategorySummary> GetSummaries()
+    {
+        _stateLock.EnterReadLock();
+        try
+        {
+            return _categories.ToDictionary(
+                pair => pair.Key,
+                pair => new CategorySummary(
+                    TokenTally: pair.Value.TokenTally,
+                    ProbNotInCat: pair.Value.PriorNonCategory,
+                    ProbInCat: pair.Value.PriorCategory),
+                StringComparer.OrdinalIgnoreCase);
         }
         finally
         {
