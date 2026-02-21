@@ -39,6 +39,6 @@ public sealed class DefaultTextTokenizerTests
     {
         var tokens = tokenizer.Tokenize("offers offered offering categories boxes").ToArray();
 
-        Assert.Equal(["offer", "offer", "offer", "category", "box"], tokens);
+        Assert.Equal(["offer", "offer", "offer", "categori", "box"], tokens);
     }
 }

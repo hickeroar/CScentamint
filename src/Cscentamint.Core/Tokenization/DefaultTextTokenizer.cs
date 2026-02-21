@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Snowball;
 
 namespace Cscentamint.Core;
 
@@ -8,6 +9,8 @@ namespace Cscentamint.Core;
 /// </summary>
 public sealed class DefaultTextTokenizer : ITextTokenizer
 {
+    private static readonly ThreadLocal<EnglishStemmer> EnglishStemmerInstance = new(() => new EnglishStemmer());
+
     /// <inheritdoc />
     public IEnumerable<string> Tokenize(string text)
     {
@@ -54,36 +57,6 @@ public sealed class DefaultTextTokenizer : ITextTokenizer
 
     private static string StemEnglishToken(string token)
     {
-        if (token.Length <= 2)
-        {
-            return token;
-        }
-
-        if (token.EndsWith("ies", StringComparison.Ordinal) && token.Length > 4)
-        {
-            return token[..^3] + "y";
-        }
-
-        if (token.EndsWith("ing", StringComparison.Ordinal) && token.Length > 5)
-        {
-            return token[..^3];
-        }
-
-        if (token.EndsWith("ed", StringComparison.Ordinal) && token.Length > 4)
-        {
-            return token[..^2];
-        }
-
-        if (token.EndsWith("es", StringComparison.Ordinal) && token.Length > 4)
-        {
-            return token[..^2];
-        }
-
-        if (token.EndsWith("s", StringComparison.Ordinal) && token.Length > 3)
-        {
-            return token[..^1];
-        }
-
-        return token;
+        return EnglishStemmerInstance.Value!.Stem(token);
     }
 }
