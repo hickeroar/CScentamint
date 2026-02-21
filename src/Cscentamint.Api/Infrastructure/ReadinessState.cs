@@ -5,7 +5,7 @@ namespace Cscentamint.Api.Infrastructure;
 /// </summary>
 public sealed class ReadinessState
 {
-    private bool _isReady = true;
+    private volatile bool _isReady = true;
 
     /// <summary>
     /// Gets whether the API is currently ready to serve requests.

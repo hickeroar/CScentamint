@@ -87,7 +87,9 @@ Persistence notes:
 - model schema is versioned
 - load validates category names, token counts, and tally invariants
 - file save uses temp-file + atomic replace
-- default path for null file arguments: `/tmp/cscentamint-model.bin`
+- default path for null file arguments: `/tmp/cscentamint-model.bin` (development fallback)
+- for production, provide an explicit absolute model path owned by the service account
+- for production, restrict file and directory permissions so only the service account can read/write model files
 
 The HTTP API remains memory-first; persistence is opt-in via core APIs.
 

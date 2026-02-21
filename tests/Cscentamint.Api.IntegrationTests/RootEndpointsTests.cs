@@ -100,6 +100,31 @@ public sealed class RootEndpointsTests(WebApplicationFactory<Program> factory)
     }
 
     /// <summary>
+    /// Verifies valid maximum-length category names are accepted by root route constraints.
+    /// </summary>
+    [Fact]
+    public async Task Train_MaxLengthCategoryRouteValue_Succeeds()
+    {
+        await PostTextAsync("/flush", string.Empty);
+        var category = new string('a', 64);
+
+        var response = await PostTextAsync($"/train/{category}", "valid sample text");
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
+    /// Verifies invalid bracket characters are rejected by root route category constraints.
+    /// </summary>
+    [Fact]
+    public async Task Train_BracketedCategoryRouteValue_ReturnsNotFound()
+    {
+        var response = await PostTextAsync("/train/[spam]", "any");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    /// <summary>
     /// Verifies wrong method is rejected with method-not-allowed.
     /// </summary>
     [Fact]

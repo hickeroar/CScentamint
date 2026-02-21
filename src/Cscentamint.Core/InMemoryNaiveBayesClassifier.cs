@@ -297,7 +297,13 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Saves model state to an absolute file path, using an atomic replace strategy.
+    /// </summary>
+    /// <param name="absolutePath">
+    /// Absolute destination path. When null or whitespace, uses the default development fallback path.
+    /// For production, prefer an explicit absolute path with restricted service-account permissions.
+    /// </param>
     public void SaveToFile(string? absolutePath = null)
     {
         var resolvedPath = ResolveModelPath(absolutePath);
@@ -325,7 +331,13 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Loads model state from an absolute file path.
+    /// </summary>
+    /// <param name="absolutePath">
+    /// Absolute source path. When null or whitespace, uses the default development fallback path.
+    /// For production, prefer an explicit absolute path with restricted service-account permissions.
+    /// </param>
     public void LoadFromFile(string? absolutePath = null)
     {
         var resolvedPath = ResolveModelPath(absolutePath);

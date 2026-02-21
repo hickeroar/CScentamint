@@ -63,11 +63,16 @@ public sealed class BearerTokenMiddleware(RequestDelegate next, IOptions<AuthOpt
     {
         var expectedBytes = Encoding.UTF8.GetBytes(expected);
         var actualBytes = Encoding.UTF8.GetBytes(actual);
-        if (expectedBytes.Length != actualBytes.Length)
-        {
-            return false;
-        }
+        var comparisonLength = Math.Max(expectedBytes.Length, actualBytes.Length);
+        var paddedExpected = new byte[comparisonLength];
+        var paddedActual = new byte[comparisonLength];
 
-        return CryptographicOperations.FixedTimeEquals(expectedBytes, actualBytes);
+        Buffer.BlockCopy(expectedBytes, 0, paddedExpected, 0, expectedBytes.Length);
+        Buffer.BlockCopy(actualBytes, 0, paddedActual, 0, actualBytes.Length);
+
+        var valuesMatch = CryptographicOperations.FixedTimeEquals(paddedExpected, paddedActual);
+        var lengthsMatch = expectedBytes.Length == actualBytes.Length;
+
+        return valuesMatch && lengthsMatch;
     }
 }

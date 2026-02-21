@@ -79,6 +79,21 @@ public sealed class ApiOperationalTests(WebApplicationFactory<Program> factory)
     }
 
     /// <summary>
+    /// Verifies empty bearer token values are rejected.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_WithEmptyBearerToken_ReturnsUnauthorized()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+        client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Bearer   ");
+
+        var response = await PostTextAsync(client, "/classify", "hello world");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    /// <summary>
     /// Verifies authorized requests succeed when the bearer token matches configuration.
     /// </summary>
     [Fact]

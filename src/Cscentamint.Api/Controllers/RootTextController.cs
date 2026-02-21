@@ -1,5 +1,6 @@
 using System.Text;
 using Cscentamint.Api.Contracts;
+using Cscentamint.Api.Infrastructure;
 using Cscentamint.Core;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +14,9 @@ namespace Cscentamint.Api.Controllers;
 [Route("")]
 public sealed class RootTextController(ITextClassifier classifier) : ControllerBase
 {
+    // ASP.NET route templates treat [] as token delimiters, so bracket literals are doubled.
+    private const string RouteCategoryPattern = "^[[a-zA-Z0-9_-]]+$";
+
     /// <summary>
     /// Returns category summaries.
     /// </summary>
@@ -29,7 +33,7 @@ public sealed class RootTextController(ITextClassifier classifier) : ControllerB
     /// <summary>
     /// Trains a category from raw request body text.
     /// </summary>
-    [HttpPost("train/{category:regex(^[[-_A-Za-z0-9]]+$)}")]
+    [HttpPost($"train/{{category:regex({RouteCategoryPattern})}}")]
     [ProducesResponseType(typeof(RootMutationResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<RootMutationResponse>> Train([FromRoute] string category)
     {
@@ -41,7 +45,7 @@ public sealed class RootTextController(ITextClassifier classifier) : ControllerB
     /// <summary>
     /// Untrains a category from raw request body text.
     /// </summary>
-    [HttpPost("untrain/{category:regex(^[[-_A-Za-z0-9]]+$)}")]
+    [HttpPost($"untrain/{{category:regex({RouteCategoryPattern})}}")]
     [ProducesResponseType(typeof(RootMutationResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<RootMutationResponse>> Untrain([FromRoute] string category)
     {
@@ -115,7 +119,31 @@ public sealed class RootTextController(ITextClassifier classifier) : ControllerB
     {
         Request.EnableBuffering();
         Request.Body.Position = 0;
-        using var reader = new StreamReader(Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+
+        using var bodyBuffer = new MemoryStream();
+        var chunk = new byte[16 * 1024];
+        var totalBytesRead = 0L;
+
+        while (true)
+        {
+            var bytesRead = await Request.Body.ReadAsync(chunk);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            totalBytesRead += bytesRead;
+            if (totalBytesRead > RootEndpointRequestSizeMiddleware.MaxRequestBodyBytes)
+            {
+                Request.Body.Position = 0;
+                throw new ArgumentException("request body too large");
+            }
+
+            await bodyBuffer.WriteAsync(chunk.AsMemory(0, bytesRead));
+        }
+
+        bodyBuffer.Position = 0;
+        using var reader = new StreamReader(bodyBuffer, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: false);
         var body = await reader.ReadToEndAsync();
         Request.Body.Position = 0;
         return body;
