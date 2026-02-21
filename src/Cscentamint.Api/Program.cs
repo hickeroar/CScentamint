@@ -5,6 +5,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<ITextClassifier, InMemoryNaiveBayesClassifier>();
 builder.Services.AddSingleton<ITextTokenizer, DefaultTextTokenizer>();
+builder.Services.AddSingleton<ReadinessState>();
+builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
+builder.Services.PostConfigure<AuthOptions>(options =>
+{
+    if (string.IsNullOrWhiteSpace(options.Token))
+    {
+        options.Token = builder.Configuration["auth-token"];
+    }
+});
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddControllers();
@@ -20,6 +29,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+app.UseMiddleware<CompatRequestSizeLimitMiddleware>();
+app.UseMiddleware<BearerTokenMiddleware>();
+
+var readinessState = app.Services.GetRequiredService<ReadinessState>();
+app.Lifetime.ApplicationStopping.Register(readinessState.MarkNotReady);
+
+app.MapGet("/healthz", () => Results.Json(new { status = "ok" }));
+app.MapGet("/readyz", (ReadinessState readiness) =>
+    readiness.IsReady
+        ? Results.Json(new { status = "ready" })
+        : Results.Json(new { status = "not ready" }, statusCode: StatusCodes.Status503ServiceUnavailable));
 app.MapControllers();
 app.Run();
 
