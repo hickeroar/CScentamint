@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *"
 
 jobs:
   test-and-enforce-coverage:
@@ -38,3 +41,48 @@ jobs:
           path: |
             tests/Cscentamint.Core.UnitTests/coverage.cobertura.xml
             tests/Cscentamint.Api.IntegrationTests/coverage.cobertura.xml
+
+  static-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: |
+          dotnet restore src/Cscentamint.Core/Cscentamint.Core.csproj
+          dotnet restore src/Cscentamint.Api/Cscentamint.Api.csproj
+
+      - name: Build release artifacts
+        run: |
+          dotnet build src/Cscentamint.Core/Cscentamint.Core.csproj --configuration Release --no-restore
+          dotnet build src/Cscentamint.Api/Cscentamint.Api.csproj --configuration Release --no-restore
+
+  parity-smoke:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: |
+          dotnet restore tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj
+          dotnet restore tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj
+
+      - name: Run property and compatibility smoke tests
+        run: |
+          dotnet test tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj --configuration Release --no-restore --filter "FullyQualifiedName~ClassifierPropertyTests"
+          dotnet test tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj --configuration Release --no-restore --filter "FullyQualifiedName~CompatEndpoints_HandleConcurrentTrainAndScoreRequests"

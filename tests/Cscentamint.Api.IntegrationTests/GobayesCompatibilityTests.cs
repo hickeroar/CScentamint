@@ -111,6 +111,24 @@ public sealed class GobayesCompatibilityTests(WebApplicationFactory<Program> fac
         Assert.Contains(HttpMethod.Post.Method, response.Content.Headers.Allow);
     }
 
+    /// <summary>
+    /// Verifies compatibility endpoints handle concurrent train/score traffic.
+    /// </summary>
+    [Fact]
+    public async Task CompatEndpoints_HandleConcurrentTrainAndScoreRequests()
+    {
+        await PostTextAsync("/flush", string.Empty);
+
+        var tasks = Enumerable.Range(0, 20).Select(async i =>
+        {
+            await PostTextAsync("/train/loadtest", $"sample text {i}");
+            var response = await PostTextAsync("/score", "sample text");
+            response.EnsureSuccessStatusCode();
+        });
+
+        await Task.WhenAll(tasks);
+    }
+
     private async Task<HttpResponseMessage> PostTextAsync(string url, string text)
     {
         using var content = new StringContent(text);
