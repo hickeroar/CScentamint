@@ -1,8 +1,10 @@
 using System.Text.RegularExpressions;
-using System.Threading;
 
 namespace Cscentamint.Core;
 
+/// <summary>
+/// In-memory naive Bayes classifier implementation for short text inputs.
+/// </summary>
 public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
 {
     private static readonly Regex CategoryPattern = new("^[a-zA-Z0-9_-]{1,64}$", RegexOptions.Compiled);
@@ -12,6 +14,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
     private readonly Dictionary<string, CategoryPriors> _priorsByCategory =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <inheritdoc />
     public void Train(string category, string text)
     {
         var normalizedCategory = NormalizeCategory(category);
@@ -43,6 +46,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         }
     }
 
+    /// <inheritdoc />
     public void Untrain(string category, string text)
     {
         var normalizedCategory = NormalizeCategory(category);
@@ -79,6 +83,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         }
     }
 
+    /// <inheritdoc />
     public void Reset()
     {
         _stateLock.EnterWriteLock();
@@ -93,6 +98,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         }
     }
 
+    /// <inheritdoc />
     public IReadOnlyDictionary<string, float> GetScores(string text)
     {
         var normalizedText = NormalizeText(text);
@@ -108,6 +114,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         }
     }
 
+    /// <inheritdoc />
     public ClassificationPrediction Classify(string text)
     {
         var normalizedText = NormalizeText(text);

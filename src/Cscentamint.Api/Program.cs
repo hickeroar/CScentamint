@@ -22,4 +22,7 @@ app.UseExceptionHandler();
 app.MapControllers();
 app.Run();
 
+/// <summary>
+/// Entry point marker used by integration test host bootstrapping.
+/// </summary>
 public partial class Program;

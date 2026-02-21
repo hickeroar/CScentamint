@@ -7,11 +7,18 @@ using Xunit;
 
 namespace Cscentamint.Api.IntegrationTests;
 
+/// <summary>
+/// End-to-end API workflow tests using an in-memory ASP.NET host.
+/// </summary>
+/// <param name="factory">Factory used to create HTTP clients for the API.</param>
 public sealed class ApiWorkflowTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient client = factory.CreateClient();
 
+    /// <summary>
+    /// Verifies that training data influences later classification.
+    /// </summary>
     [Fact]
     public async Task TrainThenClassify_ReturnsTrainedCategory()
     {
@@ -34,6 +41,9 @@ public sealed class ApiWorkflowTests(WebApplicationFactory<Program> factory)
         Assert.Equal("spam", payload.Category);
     }
 
+    /// <summary>
+    /// Verifies invalid category route values return problem details.
+    /// </summary>
     [Fact]
     public async Task InvalidCategory_ReturnsProblemDetails()
     {
@@ -47,6 +57,9 @@ public sealed class ApiWorkflowTests(WebApplicationFactory<Program> factory)
         Assert.Equal(400, problem.Status);
     }
 
+    /// <summary>
+    /// Verifies request validation returns a validation problem for empty text.
+    /// </summary>
     [Fact]
     public async Task EmptyText_ReturnsValidationProblem()
     {

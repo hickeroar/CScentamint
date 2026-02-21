@@ -1,10 +1,15 @@
-using Cscentamint.Core;
 using Xunit;
 
 namespace Cscentamint.Core.UnitTests;
 
+/// <summary>
+/// Unit tests for <see cref="InMemoryNaiveBayesClassifier" /> behavior.
+/// </summary>
 public sealed class ClassifierTests
 {
+    /// <summary>
+    /// Verifies classification returns <c>null</c> when no samples have been trained.
+    /// </summary>
     [Fact]
     public void Classify_ReturnsNull_WhenNoTrainingData()
     {
@@ -15,6 +20,9 @@ public sealed class ClassifierTests
         Assert.Null(result.PredictedCategory);
     }
 
+    /// <summary>
+    /// Verifies a trained category is predicted for matching input.
+    /// </summary>
     [Fact]
     public void TrainAndClassify_ReturnsExpectedCategory()
     {
@@ -27,6 +35,9 @@ public sealed class ClassifierTests
         Assert.Equal("positive", result.PredictedCategory);
     }
 
+    /// <summary>
+    /// Verifies reset removes all learned scores and priors.
+    /// </summary>
     [Fact]
     public void Reset_ClearsAllLearnedState()
     {
@@ -39,6 +50,9 @@ public sealed class ClassifierTests
         Assert.Empty(classifier.GetScores("foo"));
     }
 
+    /// <summary>
+    /// Verifies concurrent train and score operations complete safely.
+    /// </summary>
     [Fact]
     public async Task ParallelTrainAndScore_CompletesWithoutErrors()
     {
