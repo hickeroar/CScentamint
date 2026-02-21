@@ -1,76 +1,118 @@
 # Cscentamint
-A trainable web API for naive Bayesian text classification on ASP.NET Core and .NET 10.
 
-This repository is optimized for CLI-first development in VSCode/Cursor (no Visual Studio solution file).
+Trainable Naive Bayes text classification for .NET 10 with:
 
-## Projects
+- native ASP.NET Core routes under `/api/*`
+- gobayes-compatible routes at the root (`/train`, `/classify`, etc.)
+- strict quality gates (100% line/branch/method coverage in both test projects)
 
-- `src/Cscentamint.Core`: classifier domain logic and in-memory model implementation.
-- `src/Cscentamint.Api`: ASP.NET Core transport layer and HTTP contracts.
-- `tests/Cscentamint.Core.UnitTests`: classifier unit tests.
-- `tests/Cscentamint.Api.IntegrationTests`: API integration tests with in-memory host.
+The repository is CLI-first for VSCode/Cursor workflows (no `.sln` file).
+
+## Project layout
+
+- `src/Cscentamint.Core`: classifier logic, tokenization pipeline, persistence model.
+- `src/Cscentamint.Api`: HTTP layer, compatibility endpoints, auth/probe middleware.
+- `tests/Cscentamint.Core.UnitTests`: core behavior, persistence, property tests.
+- `tests/Cscentamint.Api.IntegrationTests`: end-to-end API and compatibility coverage.
 
 ## Requirements
 
 - .NET 10 SDK
 
-## Run
+## Run locally
 
 ```bash
 dotnet restore
 dotnet run --project src/Cscentamint.Api/Cscentamint.Api.csproj
 ```
 
-The API is exposed through controllers under `/api/*`.
+## API surfaces
 
-## Test
+### Native Cscentamint API (`/api/*`, JSON request bodies)
 
-```bash
-dotnet test tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj
-dotnet test tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj
-```
-
-Both test projects enforce **100% line, branch, and method coverage** for production code:
-
-- `Cscentamint.Core.UnitTests` enforces coverage for `Cscentamint.Core`.
-- `Cscentamint.Api.IntegrationTests` enforces coverage for `Cscentamint.Api`.
-
-The same `dotnet test` commands above are used in CI.
-
-### Coverage reports
-
-Running tests generates Cobertura reports at:
-
-- `tests/Cscentamint.Core.UnitTests/coverage.cobertura.xml`
-- `tests/Cscentamint.Api.IntegrationTests/coverage.cobertura.xml`
-
-## VSCode/Cursor workflow
-
-- Use `.vscode/tasks.json` for restore/build/test/run/watch tasks.
-- Use `.vscode/launch.json` to debug `Cscentamint.Api`.
-- Workspace code style and build defaults are set in `.editorconfig`, `Directory.Build.props`, and `Directory.Packages.props`.
-
-## API
-
-Most request bodies are JSON with the shape:
+Request shape:
 
 ```json
 { "text": "text to process" }
 ```
 
-- `POST /api/categories/{category}/samples`: train category with request body; returns `204 No Content`.
-- `DELETE /api/categories/{category}/samples`: untrain category with request body; returns `204 No Content`.
-- `POST /api/scores`: returns `{ "<category>": <score> }`.
-- `POST /api/classifications`: returns `{ "category": "<category>|null" }`.
-- `DELETE /api/model`: clears all in-memory learned state; returns `204 No Content`.
+- `POST /api/categories/{category}/samples` -> train sample, `204`
+- `DELETE /api/categories/{category}/samples` -> untrain sample, `204`
+- `POST /api/scores` -> `{ "<category>": <score> }`
+- `POST /api/classifications` -> `{ "category": "<category>|null", "score": <float> }`
+- `DELETE /api/model` -> reset model, `204`
 
-### Validation and errors
+### Gobayes compatibility API (root routes, raw text body)
 
-- Category must be 1-64 characters and contain only letters, numbers, `_`, or `-`.
-- Request body `text` is required, min length 1, max length 4000.
-- Validation and argument errors return RFC-style `ProblemDetails` JSON (`400 Bad Request`).
+- `GET /info` -> `{ "categories": { "<name>": { "tokenTally", "probNotInCat", "probInCat" } } }`
+- `POST /train/{category}` -> `{ "success": true, "categories": { ... } }`
+- `POST /untrain/{category}` -> `{ "success": true, "categories": { ... } }`
+- `POST /classify` -> `{ "category": "<name>|\"\"", "score": <float> }`
+- `POST /score` -> `{ "<category>": <score> }`
+- `POST /flush` -> `{ "success": true, "categories": {} }`
+- `GET /healthz` -> `{ "status": "ok" }`
+- `GET /readyz` -> `{ "status": "ready" }` or `503 { "status": "not ready" }`
 
-### Operational notes
+## Auth, limits, and behavior
 
-- The classifier is intentionally in-memory and process-local.
-- Data is not persisted and is reset when the process restarts or when `DELETE /api/model` is called.
+- Optional bearer auth:
+  - Configure `Auth:Token` (or `auth-token`).
+  - When configured, non-probe endpoints require `Authorization: Bearer <token>`.
+  - Unauthorized response: `401` with `WWW-Authenticate: Bearer realm="gobayes"`.
+- Probe endpoints (`/healthz`, `/readyz`) are intentionally unauthenticated.
+- Compatibility endpoints enforce a 1 MiB request-body limit and return `413` with:
+  - `{ "error": "request body too large" }`
+- Category names must match `^[-_A-Za-z0-9]+$` semantics.
+
+## Tokenization and scoring
+
+Default pipeline is gobayes-like:
+
+- Unicode normalization (NFKC)
+- lowercasing
+- split on non-letter/non-digit characters
+- basic English stemming
+
+Score values are relative ranking values, not calibrated probabilities.
+
+## Persistence
+
+Core classifier supports explicit persistence APIs:
+
+- `Save(Stream)` / `Load(Stream)`
+- `SaveToFile(string? absolutePath)` / `LoadFromFile(string? absolutePath)`
+
+Persistence notes:
+
+- model schema is versioned
+- load validates category names, token counts, and tally invariants
+- file save uses temp-file + atomic replace
+- default path for null file arguments: `/tmp/cscentamint-model.bin`
+
+The HTTP API remains memory-first; persistence is opt-in via core APIs.
+
+## Test and quality gates
+
+Run locally:
+
+```bash
+dotnet test tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj --configuration Release
+dotnet test tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj --configuration Release
+```
+
+Both test projects enforce 100% line/branch/method coverage for production assemblies:
+
+- `Cscentamint.Core.UnitTests` -> `Cscentamint.Core`
+- `Cscentamint.Api.IntegrationTests` -> `Cscentamint.Api`
+
+CI (`.github/workflows/tests-and-coverage.yml`) includes:
+
+- coverage-gated test job
+- static analysis/build job
+- scheduled/manual parity smoke job (property + concurrency stress slices)
+
+## Developer workflow
+
+- Use `.vscode/tasks.json` for restore/build/test/run/watch tasks.
+- Use `.vscode/launch.json` for API debugging.
+- Formatting and analyzer defaults live in `.editorconfig`, `Directory.Build.props`, and `Directory.Packages.props`.
