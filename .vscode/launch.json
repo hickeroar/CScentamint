@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Cscentamint.Api",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "dotnet: build api",
+      "program": "${workspaceFolder}/src/Cscentamint.Api/bin/Debug/net10.0/Cscentamint.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Cscentamint.Api",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal"
+    }
+  ]
+}

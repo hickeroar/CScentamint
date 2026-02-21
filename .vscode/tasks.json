@@ -1,0 +1,74 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dotnet: restore",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "restore"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "dotnet: build api",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "src/Cscentamint.Api/Cscentamint.Api.csproj"
+      ],
+      "dependsOn": "dotnet: restore",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "dotnet: test core",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "dotnet: test api",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "dotnet: test all",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "dotnet: test core",
+        "dotnet: test api"
+      ]
+    },
+    {
+      "label": "dotnet: run api",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "src/Cscentamint.Api/Cscentamint.Api.csproj"
+      ]
+    },
+    {
+      "label": "dotnet: watch api",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "watch",
+        "--project",
+        "src/Cscentamint.Api/Cscentamint.Api.csproj",
+        "run"
+      ]
+    }
+  ]
+}
