@@ -43,4 +43,28 @@ public interface ITextClassifier
     /// </summary>
     /// <returns>Category summaries keyed by category name.</returns>
     IReadOnlyDictionary<string, CategorySummary> GetSummaries();
+
+    /// <summary>
+    /// Saves classifier state to the provided stream.
+    /// </summary>
+    /// <param name="destination">Writable destination stream.</param>
+    void Save(Stream destination);
+
+    /// <summary>
+    /// Loads classifier state from the provided stream.
+    /// </summary>
+    /// <param name="source">Readable source stream.</param>
+    void Load(Stream source);
+
+    /// <summary>
+    /// Saves classifier state to an absolute file path using atomic replacement.
+    /// </summary>
+    /// <param name="absolutePath">Absolute file path, or <c>null</c> for the default path.</param>
+    void SaveToFile(string? absolutePath = null);
+
+    /// <summary>
+    /// Loads classifier state from an absolute file path.
+    /// </summary>
+    /// <param name="absolutePath">Absolute file path, or <c>null</c> for the default path.</param>
+    void LoadFromFile(string? absolutePath = null);
 }

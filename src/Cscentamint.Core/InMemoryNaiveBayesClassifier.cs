@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Cscentamint.Core;
@@ -8,6 +9,8 @@ namespace Cscentamint.Core;
 public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
 {
     private static readonly Regex CategoryPattern = new("^[a-zA-Z0-9_-]{1,64}$", RegexOptions.Compiled);
+    private const int PersistedModelVersion = 1;
+    private const string DefaultModelFilePath = "/tmp/cscentamint-model.bin";
     private readonly ReaderWriterLockSlim _stateLock = new();
     private readonly Dictionary<string, CategoryState> _categories = new(StringComparer.OrdinalIgnoreCase);
     private readonly ITextTokenizer _tokenizer;
@@ -182,6 +185,154 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         }
     }
 
+    /// <inheritdoc />
+    public void Save(Stream destination)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        if (!destination.CanWrite)
+        {
+            throw new ArgumentException("Destination stream must be writable.", nameof(destination));
+        }
+
+        PersistedModelState snapshot;
+
+        _stateLock.EnterReadLock();
+        try
+        {
+            snapshot = new PersistedModelState
+            {
+                Version = PersistedModelVersion,
+                Categories = _categories.ToDictionary(
+                    pair => pair.Key,
+                    pair => new PersistedCategoryState
+                    {
+                        Tally = pair.Value.TokenTally,
+                        Tokens = pair.Value.TokenCounts.ToDictionary(
+                            token => token.Key,
+                            token => token.Value,
+                            StringComparer.OrdinalIgnoreCase)
+                    },
+                    StringComparer.OrdinalIgnoreCase)
+            };
+        }
+        finally
+        {
+            _stateLock.ExitReadLock();
+        }
+
+        JsonSerializer.Serialize(destination, snapshot);
+    }
+
+    /// <inheritdoc />
+    public void Load(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (!source.CanRead)
+        {
+            throw new ArgumentException("Source stream must be readable.", nameof(source));
+        }
+
+        var model = JsonSerializer.Deserialize<PersistedModelState>(source) ??
+            throw new InvalidDataException("Unable to deserialize persisted model.");
+        if (model.Version != PersistedModelVersion)
+        {
+            throw new InvalidDataException($"Unsupported model version: {model.Version}.");
+        }
+
+        var nextCategories = new Dictionary<string, CategoryState>(StringComparer.OrdinalIgnoreCase);
+        foreach (var category in model.Categories)
+        {
+            if (!CategoryPattern.IsMatch(category.Key))
+            {
+                throw new InvalidDataException($"Invalid category name: {category.Key}.");
+            }
+
+            if (category.Value.Tally < 0)
+            {
+                throw new InvalidDataException($"Invalid tally for category {category.Key}: {category.Value.Tally}.");
+            }
+
+            var nextCategoryState = new CategoryState();
+            var sum = 0;
+            foreach (var token in category.Value.Tokens)
+            {
+                if (string.IsNullOrWhiteSpace(token.Key))
+                {
+                    throw new InvalidDataException($"Invalid token name for category {category.Key}.");
+                }
+
+                if (token.Value <= 0)
+                {
+                    throw new InvalidDataException($"Invalid token count for category {category.Key}: {token.Value}.");
+                }
+
+                nextCategoryState.TokenCounts[token.Key] = token.Value;
+                sum += token.Value;
+            }
+
+            if (sum != category.Value.Tally)
+            {
+                throw new InvalidDataException(
+                    $"Invalid tally for category {category.Key}: tally={category.Value.Tally}, sum={sum}.");
+            }
+
+            nextCategoryState.TokenTally = category.Value.Tally;
+            nextCategories[category.Key] = nextCategoryState;
+        }
+
+        _stateLock.EnterWriteLock();
+        try
+        {
+            _categories.Clear();
+            foreach (var category in nextCategories)
+            {
+                _categories[category.Key] = category.Value;
+            }
+
+            RecalculateCategoryPriors();
+        }
+        finally
+        {
+            _stateLock.ExitWriteLock();
+        }
+    }
+
+    /// <inheritdoc />
+    public void SaveToFile(string? absolutePath = null)
+    {
+        var resolvedPath = ResolveModelPath(absolutePath);
+        var directory = Path.GetDirectoryName(resolvedPath) ??
+            throw new InvalidOperationException("Unable to determine model directory.");
+        Directory.CreateDirectory(directory);
+
+        var tempPath = Path.Combine(directory, $".cscentamint-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                Save(stream);
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(tempPath, resolvedPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public void LoadFromFile(string? absolutePath = null)
+    {
+        var resolvedPath = ResolveModelPath(absolutePath);
+        using var stream = new FileStream(resolvedPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        Load(stream);
+    }
+
     private IReadOnlyDictionary<string, float> ScoreUnsafe(string text)
     {
         var tokenOccurrences = CountTokenOccurrences(_tokenizer.Tokenize(text));
@@ -288,6 +439,17 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         }
 
         return normalizedCategory;
+    }
+
+    private static string ResolveModelPath(string? absolutePath)
+    {
+        var resolvedPath = string.IsNullOrWhiteSpace(absolutePath) ? DefaultModelFilePath : absolutePath;
+        if (!Path.IsPathRooted(resolvedPath))
+        {
+            throw new ArgumentException("Model file path must be absolute.", nameof(absolutePath));
+        }
+
+        return resolvedPath;
     }
 
     private sealed class CategoryState
