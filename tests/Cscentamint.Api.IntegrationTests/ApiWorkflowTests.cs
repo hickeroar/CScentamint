@@ -58,6 +58,56 @@ public sealed class ApiWorkflowTests(WebApplicationFactory<Program> factory)
     }
 
     /// <summary>
+    /// Verifies score endpoint returns per-category values for trained samples.
+    /// </summary>
+    [Fact]
+    public async Task Scores_ReturnsCategoryScores()
+    {
+        await client.DeleteAsync("/api/model");
+        await client.PostAsJsonAsync(
+            "/api/categories/ham/samples",
+            new TextDocumentRequest { Text = "meeting schedule calendar" });
+
+        var response = await client.PostAsJsonAsync(
+            "/api/scores",
+            new TextDocumentRequest { Text = "calendar meeting" });
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<Dictionary<string, float>>();
+        Assert.NotNull(payload);
+        Assert.True(payload.ContainsKey("ham"));
+        Assert.True(payload["ham"] > 0f);
+    }
+
+    /// <summary>
+    /// Verifies remove-sample endpoint executes and allows classification fallback to null.
+    /// </summary>
+    [Fact]
+    public async Task RemoveSample_ThenClassify_ReturnsNullCategory()
+    {
+        await client.DeleteAsync("/api/model");
+        await client.PostAsJsonAsync(
+            "/api/categories/spam/samples",
+            new TextDocumentRequest { Text = "buy now limited offer" });
+
+        var removeRequest = new HttpRequestMessage(HttpMethod.Delete, "/api/categories/spam/samples")
+        {
+            Content = JsonContent.Create(new TextDocumentRequest { Text = "buy now limited offer" })
+        };
+
+        var removeResponse = await client.SendAsync(removeRequest);
+        Assert.Equal(HttpStatusCode.NoContent, removeResponse.StatusCode);
+
+        var classifyResponse = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "limited offer now" });
+        classifyResponse.EnsureSuccessStatusCode();
+        var payload = await classifyResponse.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Null(payload.Category);
+    }
+
+    /// <summary>
     /// Verifies request validation returns a validation problem for empty text.
     /// </summary>
     [Fact]

@@ -1,3 +1,4 @@
+using System.Reflection;
 using Xunit;
 
 namespace Cscentamint.Core.UnitTests;
@@ -69,5 +70,122 @@ public sealed class ClassifierTests
         await Task.WhenAll(tasks);
         var classification = classifier.Classify("dotnet csharp");
         Assert.Equal("tech", classification.PredictedCategory);
+    }
+
+    /// <summary>
+    /// Verifies category guard clauses reject null/whitespace and invalid names.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("!!!")]
+    public void Train_ThrowsArgumentException_ForInvalidCategory(string? category)
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+
+        var exception = Assert.Throws<ArgumentException>(() => classifier.Train(category!, "valid text token"));
+        Assert.Equal("category", exception.ParamName);
+    }
+
+    /// <summary>
+    /// Verifies null input text is normalized and treated as empty without errors.
+    /// </summary>
+    [Fact]
+    public void GetScores_AllowsNullText_AndReturnsEmptyScores()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+
+        var scores = classifier.GetScores(null!);
+
+        Assert.Empty(scores);
+    }
+
+    /// <summary>
+    /// Verifies untrain exits early when the category does not exist.
+    /// </summary>
+    [Fact]
+    public void Untrain_UnknownCategory_DoesNotThrow()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+
+        var exception = Record.Exception(() => classifier.Untrain("missing", "any sample text"));
+
+        Assert.Null(exception);
+    }
+
+    /// <summary>
+    /// Verifies untrain paths for missing token, decrement, and zero-count guard.
+    /// </summary>
+    [Fact]
+    public void Untrain_HandlesTokenRemovalBranches()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Train("music", "guitar riff solo");
+
+        classifier.Untrain("music", "unknown-token");
+        classifier.Untrain("music", "guitar");
+        classifier.Untrain("music", "guitar");
+
+        var scores = classifier.GetScores("guitar riff");
+        Assert.True(scores.TryGetValue("music", out var score));
+        Assert.True(score > 0f);
+    }
+
+    /// <summary>
+    /// Verifies priors can be recalculated when tokenization yields no learned tokens.
+    /// </summary>
+    [Fact]
+    public void Train_WithOnlyShortTokens_ProducesNoScores()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Train("tiny", "a an to of");
+
+        var scores = classifier.GetScores("a an to");
+
+        Assert.Empty(scores);
+    }
+
+    /// <summary>
+    /// Verifies private probability helper returns zero for unknown categories.
+    /// </summary>
+    [Fact]
+    public void CalculateBayesianProbability_ReturnsZero_ForUnknownCategory()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+
+        var result = InvokeBayesianProbability(classifier, "missing", 1, 1);
+
+        Assert.Equal(0f, result);
+    }
+
+    /// <summary>
+    /// Verifies denominator-zero guard in probability helper returns zero.
+    /// </summary>
+    [Fact]
+    public void CalculateBayesianProbability_ReturnsZero_WhenDenominatorIsZero()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Train("empty", "a an to");
+
+        var result = InvokeBayesianProbability(classifier, "empty", 1, 1);
+
+        Assert.Equal(0f, result);
+    }
+
+    private static float InvokeBayesianProbability(
+        InMemoryNaiveBayesClassifier classifier,
+        string category,
+        int tokenScore,
+        int totalTokenCount)
+    {
+        var method = typeof(InMemoryNaiveBayesClassifier).GetMethod(
+            "CalculateBayesianProbability",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+
+        Assert.NotNull(method);
+        var value = method!.Invoke(classifier, [category, tokenScore, totalTokenCount]);
+        Assert.NotNull(value);
+        return Assert.IsType<float>(value);
     }
 }

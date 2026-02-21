@@ -7,6 +7,7 @@ TestResults/
 **/*.trx
 **/*.coverage
 **/*.coveragexml
+**/coverage.cobertura.xml
 
 # NuGet
 *.nupkg

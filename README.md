@@ -30,6 +30,20 @@ dotnet test tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj
 dotnet test tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj
 ```
 
+Both test projects enforce **100% line, branch, and method coverage** for production code:
+
+- `Cscentamint.Core.UnitTests` enforces coverage for `Cscentamint.Core`.
+- `Cscentamint.Api.IntegrationTests` enforces coverage for `Cscentamint.Api`.
+
+The same `dotnet test` commands above are used in CI.
+
+### Coverage reports
+
+Running tests generates Cobertura reports at:
+
+- `tests/Cscentamint.Core.UnitTests/coverage.cobertura.xml`
+- `tests/Cscentamint.Api.IntegrationTests/coverage.cobertura.xml`
+
 ## VSCode/Cursor workflow
 
 - Use `.vscode/tasks.json` for restore/build/test/run/watch tasks.
