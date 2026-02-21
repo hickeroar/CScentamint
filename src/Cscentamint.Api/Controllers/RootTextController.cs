@@ -136,7 +136,7 @@ public sealed class RootTextController(ITextClassifier classifier) : ControllerB
             if (totalBytesRead > RootEndpointRequestSizeMiddleware.MaxRequestBodyBytes)
             {
                 Request.Body.Position = 0;
-                throw new ArgumentException("request body too large");
+                throw new PayloadTooLargeException();
             }
 
             await bodyBuffer.WriteAsync(chunk.AsMemory(0, bytesRead));

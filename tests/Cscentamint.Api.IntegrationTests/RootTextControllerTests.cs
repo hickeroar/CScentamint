@@ -16,7 +16,7 @@ public sealed class RootTextControllerTests
     /// Verifies controller-level body guard rejects oversized payloads even outside middleware.
     /// </summary>
     [Fact]
-    public async Task Classify_RequestBodyTooLarge_ThrowsArgumentException()
+    public async Task Classify_RequestBodyTooLarge_ThrowsPayloadTooLargeException()
     {
         var classifier = new InMemoryNaiveBayesClassifier();
         var controller = new RootTextController(classifier)
@@ -31,7 +31,7 @@ public sealed class RootTextControllerTests
             new byte[checked((int)RootEndpointRequestSizeMiddleware.MaxRequestBodyBytes + 1)]);
         controller.HttpContext.Request.ContentType = "text/plain";
 
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => controller.Classify());
+        var exception = await Assert.ThrowsAsync<PayloadTooLargeException>(() => controller.Classify());
 
         Assert.Equal("request body too large", exception.Message);
     }

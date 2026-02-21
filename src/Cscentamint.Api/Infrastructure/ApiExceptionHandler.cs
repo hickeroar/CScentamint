@@ -21,6 +21,15 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is PayloadTooLargeException)
+        {
+            httpContext.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+            await httpContext.Response.WriteAsJsonAsync(
+                new { error = "request body too large" },
+                cancellationToken);
+            return true;
+        }
+
         if (exception is ArgumentException argumentException)
         {
             var details = new ProblemDetails

@@ -13,6 +13,42 @@ namespace Cscentamint.Api.IntegrationTests;
 public sealed class ApiExceptionHandlerTests
 {
     /// <summary>
+    /// Verifies custom payload-too-large exception messages are retained.
+    /// </summary>
+    [Fact]
+    public void PayloadTooLargeException_CustomMessage_Preserved()
+    {
+        var exception = new PayloadTooLargeException("custom payload message");
+
+        Assert.Equal("custom payload message", exception.Message);
+    }
+
+    /// <summary>
+    /// Verifies payload-too-large exceptions are converted to HTTP 413 with stable error payload.
+    /// </summary>
+    [Fact]
+    public async Task TryHandleAsync_PayloadTooLargeException_ReturnsTrueAndWritesExpectedPayload()
+    {
+        var handler = new ApiExceptionHandler(new NullLogger<ApiExceptionHandler>());
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+
+        var handled = await handler.TryHandleAsync(
+            context,
+            new PayloadTooLargeException(),
+            CancellationToken.None);
+
+        Assert.True(handled);
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, context.Response.StatusCode);
+
+        context.Response.Body.Position = 0;
+        var payload = await JsonSerializer.DeserializeAsync<Dictionary<string, string>>(context.Response.Body);
+        Assert.NotNull(payload);
+        Assert.True(payload.TryGetValue("error", out var error));
+        Assert.Equal("request body too large", error);
+    }
+
+    /// <summary>
     /// Verifies argument exceptions are converted to HTTP 400 ProblemDetails.
     /// </summary>
     [Fact]
