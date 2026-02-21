@@ -20,7 +20,9 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore
+        run: |
+          dotnet restore tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj
+          dotnet restore tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj
 
       - name: Run core unit tests with coverage gate
         run: dotnet test tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj --configuration Release --no-restore
