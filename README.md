@@ -105,31 +105,7 @@ Notes for library usage:
 - Root payload-too-large response is `413` with: `{ "error": "request body too large" }`.
 - Category route values use `[-_A-Za-z0-9]` semantics.
 - `/healthz` and `/readyz` are intentionally unauthenticated.
-
-### Native API (`/api/*`, JSON)
-
-Request shape:
-
-```json
-{ "text": "text to process" }
-```
-
-- `POST /api/categories/{category}/samples` -> train sample (`204`)
-- `DELETE /api/categories/{category}/samples` -> untrain sample (`204`)
-- `POST /api/scores` -> `{ "<category>": <score> }`
-- `POST /api/classifications` -> `{ "category": "<category>|null", "score": <float> }`
-- `DELETE /api/model` -> reset model (`204`)
-
-### Root text API (raw text body)
-
-- `GET /info` -> category summaries
-- `POST /train/{category}` -> train from raw text, returns model summaries
-- `POST /untrain/{category}` -> untrain from raw text, returns model summaries
-- `POST /classify` -> `{ "category": "<name>|\"\"", "score": <float> }`
-- `POST /score` -> `{ "<category>": <score> }`
-- `POST /flush` -> clear in-memory model state
-- `GET /healthz` -> `{ "status": "ok" }`
-- `GET /readyz` -> `{ "status": "ready" }` or `503 { "status": "not ready" }`
+- When auth is configured, all non-probe endpoints require `Authorization: Bearer <token>`.
 
 ### Common Error Responses
 
@@ -140,6 +116,255 @@ Request shape:
 | `404` | Route mismatch (for example invalid root category route) |
 | `405` | Wrong HTTP method |
 | `413` | Root request body exceeds 1 MiB |
+
+### Run-and-test quick start
+
+Start the API:
+
+```bash
+dotnet run --project src/Cscentamint.Api/Cscentamint.Api.csproj
+```
+
+Optional auth header (if auth is configured):
+
+```text
+Authorization: Bearer <token>
+```
+
+---
+
+### Native API (`/api/*`, JSON)
+
+Request shape for JSON endpoints:
+
+```json
+{ "text": "text to process" }
+```
+
+#### Train category sample
+
+`POST /api/categories/{category}/samples` -> `204 No Content`
+
+```bash
+curl -i -X POST "http://localhost:5000/api/categories/spam/samples" \
+  -H "Content-Type: application/json" \
+  -d '{ "text": "buy now limited offer click here" }'
+```
+
+#### Untrain category sample
+
+`DELETE /api/categories/{category}/samples` -> `204 No Content`
+
+```bash
+curl -i -X DELETE "http://localhost:5000/api/categories/spam/samples" \
+  -H "Content-Type: application/json" \
+  -d '{ "text": "buy now limited offer click here" }'
+```
+
+#### Score text across categories
+
+`POST /api/scores` -> `200 OK`
+
+```bash
+curl -s -X POST "http://localhost:5000/api/scores" \
+  -H "Content-Type: application/json" \
+  -d '{ "text": "limited offer today" }'
+```
+
+Example response:
+
+```json
+{
+  "ham": 2.438,
+  "spam": 8.991
+}
+```
+
+#### Classify text
+
+`POST /api/classifications` -> `200 OK`
+
+```bash
+curl -s -X POST "http://localhost:5000/api/classifications" \
+  -H "Content-Type: application/json" \
+  -d '{ "text": "limited offer today" }'
+```
+
+Example response:
+
+```json
+{
+  "category": "spam",
+  "score": 8.991
+}
+```
+
+When no category can be predicted:
+
+```json
+{
+  "category": null,
+  "score": 0
+}
+```
+
+#### Reset model state
+
+`DELETE /api/model` -> `204 No Content`
+
+```bash
+curl -i -X DELETE "http://localhost:5000/api/model"
+```
+
+---
+
+### Root text API (raw text body)
+
+Root endpoints use plain text request bodies rather than JSON.
+
+#### Get model summary
+
+`GET /info` -> `200 OK`
+
+```bash
+curl -s "http://localhost:5000/info"
+```
+
+Example response:
+
+```json
+{
+  "categories": {
+    "ham": {
+      "tokenTally": 24,
+      "probNotInCat": 0.44,
+      "probInCat": 0.56
+    },
+    "spam": {
+      "tokenTally": 19,
+      "probNotInCat": 0.56,
+      "probInCat": 0.44
+    }
+  }
+}
+```
+
+#### Train with raw text
+
+`POST /train/{category}` -> `200 OK`
+
+```bash
+curl -s -X POST "http://localhost:5000/train/spam" \
+  -H "Content-Type: text/plain" \
+  --data "buy now limited offer click here"
+```
+
+Example response:
+
+```json
+{
+  "success": true,
+  "categories": {
+    "spam": {
+      "tokenTally": 6,
+      "probNotInCat": 0,
+      "probInCat": 1
+    }
+  }
+}
+```
+
+#### Untrain with raw text
+
+`POST /untrain/{category}` -> `200 OK`
+
+```bash
+curl -s -X POST "http://localhost:5000/untrain/spam" \
+  -H "Content-Type: text/plain" \
+  --data "buy now limited offer click here"
+```
+
+#### Classify with raw text
+
+`POST /classify` -> `200 OK`
+
+```bash
+curl -s -X POST "http://localhost:5000/classify" \
+  -H "Content-Type: text/plain" \
+  --data "limited offer today"
+```
+
+Example response:
+
+```json
+{
+  "category": "spam",
+  "score": 8.991
+}
+```
+
+When no category can be predicted:
+
+```json
+{
+  "category": "",
+  "score": 0
+}
+```
+
+#### Score with raw text
+
+`POST /score` -> `200 OK`
+
+```bash
+curl -s -X POST "http://localhost:5000/score" \
+  -H "Content-Type: text/plain" \
+  --data "limited offer today"
+```
+
+#### Flush root model state
+
+`POST /flush` -> `200 OK`
+
+```bash
+curl -s -X POST "http://localhost:5000/flush" \
+  -H "Content-Type: text/plain" \
+  --data ""
+```
+
+Example response:
+
+```json
+{
+  "success": true,
+  "categories": {}
+}
+```
+
+#### Probes
+
+`GET /healthz` and `GET /readyz`:
+
+```bash
+curl -s "http://localhost:5000/healthz"
+curl -i "http://localhost:5000/readyz"
+```
+
+Probe response examples:
+
+```json
+{ "status": "ok" }
+```
+
+```json
+{ "status": "ready" }
+```
+
+or during drain:
+
+```json
+{ "status": "not ready" }
+```
 
 ## Tokenization and scoring behavior
 
