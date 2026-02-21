@@ -173,6 +173,67 @@ public sealed class ClassifierTests
         Assert.Equal(0f, result);
     }
 
+    /// <summary>
+    /// Verifies classifier breaks ties deterministically by lexical category order.
+    /// </summary>
+    [Fact]
+    public void Classify_TieBreaksByLexicalCategoryName()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Train("zulu", "alpha beta");
+        classifier.Train("apple", "alpha beta");
+
+        var result = classifier.Classify("alpha beta");
+
+        Assert.Equal("apple", result.PredictedCategory);
+    }
+
+    /// <summary>
+    /// Verifies prior weighting is based on token tally volume, not distinct token count.
+    /// </summary>
+    [Fact]
+    public void Classify_PrefersCategoryWithHigherTokenTally_WhenTokenEvidenceIsEqual()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Train("heavy", "topic topic topic topic topic");
+        classifier.Train("light", "topic");
+
+        var result = classifier.Classify("topic");
+
+        Assert.Equal("heavy", result.PredictedCategory);
+    }
+
+    /// <summary>
+    /// Verifies untraining full token influence deletes an emptied category.
+    /// </summary>
+    [Fact]
+    public void Untrain_RemovesCategory_WhenTokenTallyReachesZero()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Train("music", "guitar riff solo");
+
+        classifier.Untrain("music", "guitar riff solo");
+
+        Assert.Empty(classifier.GetScores("guitar riff solo"));
+        Assert.Null(classifier.Classify("guitar riff solo").PredictedCategory);
+    }
+
+    /// <summary>
+    /// Verifies partial untraining decrements token count without removing category state.
+    /// </summary>
+    [Fact]
+    public void Untrain_PartialTokenCount_DecrementsWithoutRemovingToken()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Train("music", "guitar guitar riff");
+
+        classifier.Untrain("music", "guitar");
+
+        var scores = classifier.GetScores("guitar");
+        Assert.True(scores.TryGetValue("music", out var score));
+        Assert.True(score > 0f);
+    }
+
     private static float InvokeBayesianProbability(
         InMemoryNaiveBayesClassifier classifier,
         string category,

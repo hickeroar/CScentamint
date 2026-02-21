@@ -9,10 +9,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
 {
     private static readonly Regex CategoryPattern = new("^[a-zA-Z0-9_-]{1,64}$", RegexOptions.Compiled);
     private readonly ReaderWriterLockSlim _stateLock = new();
-    private readonly Dictionary<string, Dictionary<string, int>> _tokenCountsByCategory =
-        new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, CategoryPriors> _priorsByCategory =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, CategoryState> _categories = new(StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public void Train(string category, string text)
@@ -23,19 +20,17 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         _stateLock.EnterWriteLock();
         try
         {
-            if (!_tokenCountsByCategory.ContainsKey(normalizedCategory))
+            if (!_categories.TryGetValue(normalizedCategory, out var categoryState))
             {
-                _tokenCountsByCategory[normalizedCategory] = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                categoryState = new CategoryState();
+                _categories[normalizedCategory] = categoryState;
             }
 
-            foreach (var token in Tokenize(normalizedText))
+            foreach (var tokenOccurrence in CountTokenOccurrences(Tokenize(normalizedText)))
             {
-                if (!_tokenCountsByCategory[normalizedCategory].ContainsKey(token))
-                {
-                    _tokenCountsByCategory[normalizedCategory][token] = 0;
-                }
-
-                _tokenCountsByCategory[normalizedCategory][token]++;
+                categoryState.TokenCounts[tokenOccurrence.Key] =
+                    categoryState.TokenCounts.GetValueOrDefault(tokenOccurrence.Key) + tokenOccurrence.Value;
+                categoryState.TokenTally += tokenOccurrence.Value;
             }
 
             RecalculateCategoryPriors();
@@ -55,24 +50,33 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         _stateLock.EnterWriteLock();
         try
         {
-            if (!_tokenCountsByCategory.ContainsKey(normalizedCategory))
+            if (!_categories.TryGetValue(normalizedCategory, out var categoryState))
             {
                 return;
             }
 
-            foreach (var token in Tokenize(normalizedText))
+            foreach (var tokenOccurrence in CountTokenOccurrences(Tokenize(normalizedText)))
             {
-                if (!_tokenCountsByCategory[normalizedCategory].ContainsKey(token))
+                if (!categoryState.TokenCounts.TryGetValue(tokenOccurrence.Key, out var currentTokenCount))
                 {
                     continue;
                 }
 
-                if (_tokenCountsByCategory[normalizedCategory][token] == 0)
+                if (tokenOccurrence.Value >= currentTokenCount)
                 {
-                    continue;
+                    categoryState.TokenTally -= currentTokenCount;
+                    categoryState.TokenCounts.Remove(tokenOccurrence.Key);
                 }
+                else
+                {
+                    categoryState.TokenCounts[tokenOccurrence.Key] = currentTokenCount - tokenOccurrence.Value;
+                    categoryState.TokenTally -= tokenOccurrence.Value;
+                }
+            }
 
-                _tokenCountsByCategory[normalizedCategory][token]--;
+            if (categoryState.TokenTally == 0)
+            {
+                _categories.Remove(normalizedCategory);
             }
 
             RecalculateCategoryPriors();
@@ -89,8 +93,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         _stateLock.EnterWriteLock();
         try
         {
-            _tokenCountsByCategory.Clear();
-            _priorsByCategory.Clear();
+            _categories.Clear();
         }
         finally
         {
@@ -128,8 +131,20 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
                 return new ClassificationPrediction(null);
             }
 
-            var highestScore = scores.MaxBy(entry => entry.Value);
-            return new ClassificationPrediction(highestScore.Key);
+            var highestCategory = string.Empty;
+            var highestScore = 0f;
+
+            foreach (var category in scores.Keys.OrderBy(name => name, StringComparer.Ordinal))
+            {
+                var score = scores[category];
+                if (score > highestScore)
+                {
+                    highestScore = score;
+                    highestCategory = category;
+                }
+            }
+
+            return new ClassificationPrediction(highestCategory);
         }
         finally
         {
@@ -142,7 +157,7 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         var tokenOccurrences = CountTokenOccurrences(Tokenize(text));
         var workingScores = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var category in _tokenCountsByCategory.Keys)
+        foreach (var category in _categories.Keys)
         {
             workingScores[category] = 0f;
         }
@@ -153,10 +168,10 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
             var tokenText = token.Key;
             var tokenCount = token.Value;
 
-            foreach (var category in _tokenCountsByCategory)
+            foreach (var category in _categories)
             {
                 tokenScoresByCategory[category.Key] =
-                    category.Value.TryGetValue(tokenText, out var categoryCount) ? categoryCount : 0;
+                    category.Value.TokenCounts.TryGetValue(tokenText, out var categoryCount) ? categoryCount : 0;
             }
 
             var totalTokenCount = tokenScoresByCategory.Sum(entry => entry.Value);
@@ -179,37 +194,20 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
 
     private void RecalculateCategoryPriors()
     {
-        var totalDistinctTokenCount = 0;
-        var distinctTokenCountByCategory = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var totalTokenTally = _categories.Values.Sum(category => category.TokenTally);
 
-        foreach (var category in _tokenCountsByCategory)
+        foreach (var category in _categories.Values)
         {
-            totalDistinctTokenCount += category.Value.Count;
-            distinctTokenCountByCategory[category.Key] = category.Value.Count;
-        }
-
-        var priorByCategory = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
-        foreach (var category in distinctTokenCountByCategory)
-        {
-            priorByCategory[category.Key] = totalDistinctTokenCount > 0
-                ? (float)category.Value / totalDistinctTokenCount
+            category.PriorCategory = totalTokenTally > 0
+                ? (float)category.TokenTally / totalTokenTally
                 : 0f;
-        }
-
-        var priorSum = priorByCategory.Sum(entry => entry.Value);
-        _priorsByCategory.Clear();
-
-        foreach (var category in priorByCategory)
-        {
-            _priorsByCategory[category.Key] = new CategoryPriors(
-                PriorCategory: category.Value,
-                PriorNonCategory: priorSum - category.Value);
+            category.PriorNonCategory = 1f - category.PriorCategory;
         }
     }
 
     private float CalculateBayesianProbability(string category, int tokenScore, int totalTokenCount)
     {
-        if (!_priorsByCategory.TryGetValue(category, out var categoryPriors))
+        if (!_categories.TryGetValue(category, out var categoryState))
         {
             return 0f;
         }
@@ -217,8 +215,8 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         var probabilityTokenGivenNonCategory = (float)(totalTokenCount - tokenScore) / totalTokenCount;
         var probabilityTokenGivenCategory = (float)tokenScore / totalTokenCount;
 
-        var numerator = probabilityTokenGivenCategory * categoryPriors.PriorCategory;
-        var denominator = numerator + (probabilityTokenGivenNonCategory + categoryPriors.PriorNonCategory);
+        var numerator = probabilityTokenGivenCategory * categoryState.PriorCategory;
+        var denominator = (probabilityTokenGivenNonCategory * categoryState.PriorNonCategory) + numerator;
         return denominator == 0f ? 0f : numerator / denominator;
     }
 
@@ -269,5 +267,14 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         return normalizedCategory;
     }
 
-    private readonly record struct CategoryPriors(float PriorCategory, float PriorNonCategory);
+    private sealed class CategoryState
+    {
+        public Dictionary<string, int> TokenCounts { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public int TokenTally { get; set; }
+
+        public float PriorCategory { get; set; }
+
+        public float PriorNonCategory { get; set; }
+    }
 }

@@ -121,4 +121,52 @@ public sealed class ApiWorkflowTests(WebApplicationFactory<Program> factory)
         var validation = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(validation);
     }
+
+    /// <summary>
+    /// Verifies API classification uses token tally weighted priors.
+    /// </summary>
+    [Fact]
+    public async Task Classify_PrefersCategoryWithHigherTokenTally_WhenEvidenceIsEqual()
+    {
+        await client.DeleteAsync("/api/model");
+        await client.PostAsJsonAsync(
+            "/api/categories/heavy/samples",
+            new TextDocumentRequest { Text = "topic topic topic topic topic" });
+        await client.PostAsJsonAsync(
+            "/api/categories/light/samples",
+            new TextDocumentRequest { Text = "topic" });
+
+        var classifyResponse = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "topic" });
+        classifyResponse.EnsureSuccessStatusCode();
+
+        var payload = await classifyResponse.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("heavy", payload.Category);
+    }
+
+    /// <summary>
+    /// Verifies API classification tie-breaking is deterministic by lexical category order.
+    /// </summary>
+    [Fact]
+    public async Task Classify_TieBreaksByLexicalCategoryName()
+    {
+        await client.DeleteAsync("/api/model");
+        await client.PostAsJsonAsync(
+            "/api/categories/zulu/samples",
+            new TextDocumentRequest { Text = "alpha beta" });
+        await client.PostAsJsonAsync(
+            "/api/categories/apple/samples",
+            new TextDocumentRequest { Text = "alpha beta" });
+
+        var classifyResponse = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "alpha beta" });
+        classifyResponse.EnsureSuccessStatusCode();
+
+        var payload = await classifyResponse.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("apple", payload.Category);
+    }
 }
