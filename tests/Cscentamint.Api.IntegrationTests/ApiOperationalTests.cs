@@ -1,0 +1,273 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using Cscentamint.Api.Contracts;
+using Cscentamint.Api.Infrastructure;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace Cscentamint.Api.IntegrationTests;
+
+/// <summary>
+/// Integration tests for auth, probes, readiness, and request-size behavior.
+/// </summary>
+public sealed class ApiOperationalTests(WebApplicationFactory<Program> factory)
+    : IClassFixture<WebApplicationFactory<Program>>
+{
+    /// <summary>
+    /// Verifies health and readiness probes remain accessible when auth is enabled.
+    /// </summary>
+    [Fact]
+    public async Task Probes_AreAccessible_WithoutAuthToken()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+
+        var healthResponse = await client.GetAsync("/healthz");
+        var readyResponse = await client.GetAsync("/readyz");
+
+        Assert.Equal(HttpStatusCode.OK, healthResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, readyResponse.StatusCode);
+    }
+
+    /// <summary>
+    /// Verifies unauthorized requests are rejected with expected auth headers.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_WithoutToken_ReturnsUnauthorized()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+
+        var response = await PostTextAsync(client, "/classify", "hello world");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("Bearer realm=\"cscentamint\"", response.Headers.WwwAuthenticate.ToString());
+    }
+
+    /// <summary>
+    /// Verifies non-bearer authorization headers are rejected.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_WithNonBearerHeader_ReturnsUnauthorized()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", "abc123");
+
+        var response = await PostTextAsync(client, "/classify", "hello world");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Verifies bearer tokens with mismatched length are rejected.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_WithWrongLengthBearerToken_ReturnsUnauthorized()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "short");
+
+        var response = await PostTextAsync(client, "/classify", "hello world");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Verifies empty bearer token values are rejected.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_WithEmptyBearerToken_ReturnsUnauthorized()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+        client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Bearer   ");
+
+        var response = await PostTextAsync(client, "/classify", "hello world");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Verifies authorized requests succeed when the bearer token matches configuration.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_WithValidToken_Succeeds()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "secret-token");
+
+        await PostTextAsync(client, "/train/ham", "meeting calendar");
+        var response = await PostTextAsync(client, "/classify", "calendar meeting");
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<RootClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("ham", payload.Category);
+    }
+
+    /// <summary>
+    /// Verifies API JSON endpoints are also protected when bearer auth is enabled.
+    /// </summary>
+    [Fact]
+    public async Task ApiEndpoint_WithoutToken_ReturnsUnauthorized()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "hello world" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("Bearer realm=\"cscentamint\"", response.Headers.WwwAuthenticate.ToString());
+    }
+
+    /// <summary>
+    /// Verifies API JSON endpoints succeed when bearer auth is correctly supplied.
+    /// </summary>
+    [Fact]
+    public async Task ApiEndpoint_WithValidToken_Succeeds()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "secret-token");
+
+        var trainResponse = await client.PostAsJsonAsync(
+            "/api/categories/ham/samples",
+            new TextDocumentRequest { Text = "meeting calendar" });
+        Assert.Equal(HttpStatusCode.NoContent, trainResponse.StatusCode);
+
+        var classifyResponse = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "calendar meeting" });
+        classifyResponse.EnsureSuccessStatusCode();
+
+        var payload = await classifyResponse.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("ham", payload.Category);
+    }
+
+    /// <summary>
+    /// Verifies readiness returns 503 after the service is marked not ready.
+    /// </summary>
+    [Fact]
+    public async Task Readyz_ReturnsNotReady_WhenReadinessStateIsFlipped()
+    {
+        using var client = factory.CreateClient();
+        var readiness = factory.Services.GetRequiredService<ReadinessState>();
+        readiness.MarkNotReady();
+
+        var response = await client.GetAsync("/readyz");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Verifies root endpoints enforce the configured request body cap.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_RequestBodyTooLarge_ReturnsPayloadTooLarge()
+    {
+        using var client = factory.CreateClient();
+        var largeText = new string('a', checked((int)RootEndpointRequestSizeMiddleware.MaxRequestBodyBytes + 1));
+
+        var response = await PostTextAsync(client, "/classify", largeText);
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Verifies unknown-length root requests still enforce the configured request body cap.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_UnknownLengthRequestBodyTooLarge_ReturnsPayloadTooLarge()
+    {
+        using var client = factory.CreateClient();
+        var largeText = new string('a', checked((int)RootEndpointRequestSizeMiddleware.MaxRequestBodyBytes + 1));
+
+        var response = await PostUnknownLengthTextAsync(client, "/classify", largeText);
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        var payload = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+        Assert.NotNull(payload);
+        Assert.True(payload.TryGetValue("error", out var error));
+        Assert.Equal("request body too large", error);
+    }
+
+    /// <summary>
+    /// Verifies unknown-length requests under the configured body cap still succeed.
+    /// </summary>
+    [Fact]
+    public async Task RootEndpoint_UnknownLengthRequestBodyWithinLimit_Succeeds()
+    {
+        using var client = factory.CreateClient();
+        await PostTextAsync(client, "/flush", string.Empty);
+        await PostTextAsync(client, "/train/ham", "meeting calendar");
+
+        var response = await PostUnknownLengthTextAsync(client, "/classify", "calendar meeting");
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<RootClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("ham", payload.Category);
+    }
+
+    private static WebApplicationFactory<Program> CreateAuthFactory(WebApplicationFactory<Program> baseFactory)
+    {
+        return baseFactory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Auth:Token"] = "secret-token"
+                });
+            });
+        });
+    }
+
+    private static async Task<HttpResponseMessage> PostTextAsync(HttpClient client, string url, string text)
+    {
+        using var content = new StringContent(text, Encoding.UTF8, "text/plain");
+        return await client.PostAsync(url, content);
+    }
+
+    private static async Task<HttpResponseMessage> PostUnknownLengthTextAsync(HttpClient client, string url, string text)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new UnknownLengthStringContent(text)
+        };
+
+        return await client.SendAsync(request);
+    }
+
+    private sealed class UnknownLengthStringContent : HttpContent
+    {
+        private readonly byte[] body;
+
+        public UnknownLengthStringContent(string text)
+        {
+            body = Encoding.UTF8.GetBytes(text);
+            Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            return stream.WriteAsync(body, 0, body.Length);
+        }
+    }
+}
