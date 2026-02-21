@@ -113,6 +113,48 @@ public sealed class ApiOperationalTests(WebApplicationFactory<Program> factory)
     }
 
     /// <summary>
+    /// Verifies API JSON endpoints are also protected when bearer auth is enabled.
+    /// </summary>
+    [Fact]
+    public async Task ApiEndpoint_WithoutToken_ReturnsUnauthorized()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "hello world" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("Bearer realm=\"cscentamint\"", response.Headers.WwwAuthenticate.ToString());
+    }
+
+    /// <summary>
+    /// Verifies API JSON endpoints succeed when bearer auth is correctly supplied.
+    /// </summary>
+    [Fact]
+    public async Task ApiEndpoint_WithValidToken_Succeeds()
+    {
+        using var authFactory = CreateAuthFactory(factory);
+        using var client = authFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "secret-token");
+
+        var trainResponse = await client.PostAsJsonAsync(
+            "/api/categories/ham/samples",
+            new TextDocumentRequest { Text = "meeting calendar" });
+        Assert.Equal(HttpStatusCode.NoContent, trainResponse.StatusCode);
+
+        var classifyResponse = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "calendar meeting" });
+        classifyResponse.EnsureSuccessStatusCode();
+
+        var payload = await classifyResponse.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("ham", payload.Category);
+    }
+
+    /// <summary>
     /// Verifies readiness returns 503 after the service is marked not ready.
     /// </summary>
     [Fact]

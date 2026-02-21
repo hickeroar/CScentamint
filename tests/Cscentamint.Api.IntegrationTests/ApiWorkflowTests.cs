@@ -211,4 +211,26 @@ public sealed class ApiWorkflowTests(WebApplicationFactory<Program> factory)
         Assert.NotNull(payload);
         Assert.Equal("promo", payload.Category);
     }
+
+    /// <summary>
+    /// Verifies model reset endpoint returns no-content and clears learned state.
+    /// </summary>
+    [Fact]
+    public async Task DeleteModel_ReturnsNoContent_AndResetsClassifierState()
+    {
+        await client.PostAsJsonAsync(
+            "/api/categories/spam/samples",
+            new TextDocumentRequest { Text = "buy now limited offer" });
+
+        var resetResponse = await client.DeleteAsync("/api/model");
+        Assert.Equal(HttpStatusCode.NoContent, resetResponse.StatusCode);
+
+        var classifyResponse = await client.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "limited offer now" });
+        classifyResponse.EnsureSuccessStatusCode();
+        var payload = await classifyResponse.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Null(payload.Category);
+    }
 }
