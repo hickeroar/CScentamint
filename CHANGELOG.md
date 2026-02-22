@@ -2,6 +2,35 @@
 
 All notable changes to this project are documented in this file.
 
+## v2.1.0 - 2026-02-22
+
+### Added
+
+- Core NuGet package metadata for `CScentamint`, including package tags, license expression, repository links, and packaged readme support.
+- SourceLink integration for `Cscentamint.Core` via `Microsoft.SourceLink.GitHub`.
+- Dedicated Core package documentation at `src/Cscentamint.Core/README.md` covering:
+  - training, untraining, classify, score, summaries, and reset
+  - stream and file persistence
+  - tokenizer behavior and customization
+  - validation and model-loading constraints
+- Release workflow `.github/workflows/release.yml` for CI-only NuGet trusted publishing with:
+  - tag and manual dispatch triggers
+  - build/test/pack pipeline
+  - OIDC login (`NuGet/login@v1`) and package publish to nuget.org
+  - release artifact upload for `.nupkg` and `.snupkg`
+
+### Changed
+
+- `Cscentamint.Api` is now explicitly non-packable (`IsPackable=false`) to prevent accidental API package publishing.
+- Repository release docs were updated for Core-only package publishing (`CScentamint`) with trusted publishing and environment `nuget-release`.
+- CI build defaults now enable `ContinuousIntegrationBuild` on GitHub Actions.
+- Version references were updated to `v2.1.0` for release examples and package versioning.
+
+### Maintenance
+
+- Added `*.snupkg` to `.gitignore`.
+- Updated central package version management with `Microsoft.SourceLink.GitHub`.
+
 ## v2.0.0 - 2026-02-21
 
 ### Added

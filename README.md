@@ -33,6 +33,54 @@ This repository is CLI-first for VSCode/Cursor workflows (no `.sln` file).
 
 ---
 
+## NuGet package (Core only)
+
+NuGet package ID: `CScentamint`
+
+The NuGet package contains only the core classification library from `src/Cscentamint.Core`.
+It does not include API hosting or HTTP endpoints.
+
+Install:
+
+```bash
+dotnet add package CScentamint
+```
+
+---
+
+## Release to NuGet (CI trusted publishing)
+
+Publishing is handled by GitHub Actions workflow `.github/workflows/release.yml` using trusted publishing (OIDC).
+No long-lived `NUGET_API_KEY` secret is required.
+
+### One-time setup
+
+1. Create a nuget.org account and enable 2FA.
+2. In nuget.org, create a Trusted Publisher policy for this repo:
+   - Workflow file: `release.yml`
+   - Repository owner/repo: `hickeroar/CScentamint`
+   - Environment: `nuget-release`
+   - Package ID restriction: `CScentamint`
+3. In GitHub repository settings, add secret `NUGET_USER` with your nuget.org username (profile name, not email).
+4. In GitHub repository settings, create environment `nuget-release` and allow this workflow to use it.
+
+### Release flow
+
+1. Choose a package version (for example `2.1.0`).
+2. Create and push a tag prefixed with `v`:
+
+```bash
+git tag v2.1.0
+git push origin v2.1.0
+```
+
+3. Wait for workflow `release` to complete.
+4. Verify on nuget.org that package `CScentamint` is published and README/license render correctly.
+
+You can also run the workflow manually from GitHub Actions using `workflow_dispatch` and pass `version`.
+
+---
+
 ## Run as an API Server
 
 ```bash
