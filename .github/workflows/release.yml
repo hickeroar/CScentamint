@@ -1,0 +1,89 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version (for example 2.1.0)"
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: nuget-release
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Resolve package version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid version: ${VERSION}" >&2
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore
+        run: |
+          dotnet restore src/Cscentamint.Core/Cscentamint.Core.csproj
+          dotnet restore src/Cscentamint.Api/Cscentamint.Api.csproj
+          dotnet restore tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj
+          dotnet restore tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj
+
+      - name: Build
+        run: |
+          dotnet build src/Cscentamint.Core/Cscentamint.Core.csproj --configuration Release --no-restore
+          dotnet build src/Cscentamint.Api/Cscentamint.Api.csproj --configuration Release --no-restore
+
+      - name: Test
+        run: |
+          dotnet test tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj --configuration Release --no-restore
+          dotnet test tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj --configuration Release --no-restore
+
+      - name: Pack core library
+        run: |
+          mkdir -p artifacts/nuget
+          dotnet pack src/Cscentamint.Core/Cscentamint.Core.csproj \
+            --configuration Release \
+            --no-build \
+            -o artifacts/nuget \
+            -p:PackageVersion=${{ steps.version.outputs.version }}
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ steps.version.outputs.version }}
+          path: artifacts/nuget/*
+
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish to NuGet
+        run: |
+          dotnet nuget push "artifacts/nuget/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
+          dotnet nuget push "artifacts/nuget/*.snupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate

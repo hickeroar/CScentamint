@@ -11,6 +11,7 @@ TestResults/
 
 # NuGet
 *.nupkg
+*.snupkg
 
 # IDE/editor
 .vs/
