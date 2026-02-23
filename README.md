@@ -1,6 +1,6 @@
 # CScentamint
 
-Trainable naive Bayes text classification for .NET 10 as both:
+Trainable naive Bayesian text classification for .NET 10 as both:
 - a reusable core library (`Cscentamint.Core`)
 - an ASP.NET Core API (`Cscentamint.Api`)
 

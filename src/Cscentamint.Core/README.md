@@ -1,6 +1,6 @@
 # CScentamint
 
-`CScentamint` is a trainable naive Bayes text classification library with optional persistence for .NET.
+`CScentamint` is a trainable naive Bayesian text classification library with optional persistence for .NET.
 
 ## Source code
 

@@ -28,7 +28,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "CScentamint API",
         Version = "v1",
-        Description = "Trainable naive Bayes text classification API."
+        Description = "Trainable naive Bayesian text classification API."
     });
     var xmlPath = Path.Combine(AppContext.BaseDirectory, "Cscentamint.Api.xml");
     if (File.Exists(xmlPath))
