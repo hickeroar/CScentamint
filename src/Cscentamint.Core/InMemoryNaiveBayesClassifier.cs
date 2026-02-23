@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace Cscentamint.Core;
 
 /// <summary>
-/// In-memory naive Bayes classifier implementation for short text inputs.
+/// In-memory naive Bayesian classifier implementation for short text inputs.
 /// </summary>
 public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
 {
