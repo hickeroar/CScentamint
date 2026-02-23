@@ -67,6 +67,8 @@ ITextClassifier restored = new InMemoryNaiveBayesClassifier();
 restored.LoadFromFile("/tmp/cscentamint-model.bin");
 ```
 
+When using the default tokenizer, language and `removeStopWords` are persisted in the model and restored on `Load`. Legacy models without tokenizer config load successfully; the classifier’s tokenizer is unchanged when no tokenizer section exists.
+
 File persistence behavior:
 
 - Uses atomic replace strategy when saving (`SaveToFile`) to avoid partial writes.
@@ -75,12 +77,23 @@ File persistence behavior:
 
 ## Tokenization and customization
 
-The default tokenizer pipeline:
+The default tokenizer (`DefaultTextTokenizer`) pipeline:
 
 - Unicode normalization (`NFKC`)
 - lowercase normalization
 - split on non-letter/non-digit boundaries
-- English stemming
+- language-specific stemming (default English)
+- optional stopword filtering
+
+Constructor: `DefaultTextTokenizer(string? language = "english", bool removeStopWords = false)`.
+
+Supported languages for stemming and stopwords: arabic, armenian, basque, catalan, danish, dutch, english, finnish, french, german, greek, hindi, hungarian, indonesian, irish, italian, lithuanian, nepali, norwegian, porter, portuguese, romanian, russian, serbian, spanish, swedish, tamil, turkish, yiddish. Unknown languages fall back to English.
+
+Stopwords API (`Cscentamint.Core.Stopwords`):
+
+- `Stopwords.Get(lang)`: returns `IReadOnlySet<string>?` for the language, or null if unsupported
+- `Stopwords.Supported(lang)`: returns true if the language has a stopword list
+- `Stopwords.SupportedLanguages`: returns the list of supported languages
 
 You can provide a custom tokenizer by implementing `ITextTokenizer`:
 
@@ -91,6 +104,12 @@ public sealed class MyTokenizer : ITextTokenizer
 }
 
 ITextClassifier classifier = new InMemoryNaiveBayesClassifier(new MyTokenizer());
+```
+
+Or use the default tokenizer with options:
+
+```csharp
+ITextClassifier classifier = new InMemoryNaiveBayesClassifier("spanish", removeStopWords: true);
 ```
 
 ## Rules and behavior

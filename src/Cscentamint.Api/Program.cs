@@ -1,10 +1,14 @@
 using Cscentamint.Api.Infrastructure;
 using Cscentamint.Core;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<ITextClassifier, InMemoryNaiveBayesClassifier>();
-builder.Services.AddSingleton<ITextTokenizer, DefaultTextTokenizer>();
+var lang = builder.Configuration["Tokenization:Language"] ?? "english";
+var removeStopWords = string.Equals(builder.Configuration["Tokenization:RemoveStopWords"], "true", StringComparison.OrdinalIgnoreCase);
+builder.Services.AddSingleton<ITextTokenizer>(_ => new DefaultTextTokenizer(lang, removeStopWords));
+builder.Services.AddSingleton<ITextClassifier>(sp =>
+    new InMemoryNaiveBayesClassifier(sp.GetRequiredService<ITextTokenizer>()));
 builder.Services.AddSingleton<ReadinessState>();
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
 builder.Services.PostConfigure<AuthOptions>(options =>
@@ -18,7 +22,20 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "CScentamint API",
+        Version = "v1",
+        Description = "Trainable naive Bayes text classification API."
+    });
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, "Cscentamint.Api.xml");
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
 
 var app = builder.Build();
 

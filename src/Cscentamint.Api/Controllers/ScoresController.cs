@@ -22,6 +22,7 @@ public sealed class ScoresController(ITextClassifier classifier) : ControllerBas
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public ActionResult<IReadOnlyDictionary<string, float>> Create([FromBody] TextDocumentRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
         return Ok(classifier.GetScores(request.Text));
     }
 }

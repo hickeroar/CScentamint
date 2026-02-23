@@ -13,15 +13,26 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
     private const string DefaultModelFilePath = "/tmp/cscentamint-model.bin";
     private readonly ReaderWriterLockSlim _stateLock = new();
     private readonly Dictionary<string, CategoryState> _categories = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ITextTokenizer _tokenizer;
+    private ITextTokenizer _tokenizer;
 
     /// <summary>
-    /// Initializes a new in-memory classifier.
+    /// Initializes a new in-memory classifier with a custom tokenizer. Tokenizer config is not persisted.
     /// </summary>
-    /// <param name="tokenizer">Tokenizer used by train, untrain, score, and classify operations.</param>
-    public InMemoryNaiveBayesClassifier(ITextTokenizer? tokenizer = null)
+    /// <param name="tokenizer">Custom tokenizer.</param>
+    public InMemoryNaiveBayesClassifier(ITextTokenizer tokenizer)
     {
-        _tokenizer = tokenizer ?? new DefaultTextTokenizer();
+        ArgumentNullException.ThrowIfNull(tokenizer);
+        _tokenizer = tokenizer;
+    }
+
+    /// <summary>
+    /// Initializes a new in-memory classifier with the default tokenizer.
+    /// </summary>
+    /// <param name="language">Language for the default tokenizer (e.g. "english", "spanish"). Default "english".</param>
+    /// <param name="removeStopWords">Whether to filter stop words. Default false.</param>
+    public InMemoryNaiveBayesClassifier(string? language = "english", bool removeStopWords = false)
+    {
+        _tokenizer = new DefaultTextTokenizer(language, removeStopWords);
     }
 
     /// <inheritdoc />
@@ -199,20 +210,33 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
         _stateLock.EnterReadLock();
         try
         {
+            var categories = _categories.ToDictionary(
+                pair => pair.Key,
+                pair => new PersistedCategoryState
+                {
+                    Tally = pair.Value.TokenTally,
+                    Tokens = pair.Value.TokenCounts.ToDictionary(
+                        token => token.Key,
+                        token => token.Value,
+                        StringComparer.OrdinalIgnoreCase)
+                },
+                StringComparer.OrdinalIgnoreCase);
+
+            PersistedTokenizerState? tokenizerState = null;
+            if (_tokenizer is DefaultTextTokenizer dt)
+            {
+                tokenizerState = new PersistedTokenizerState
+                {
+                    Language = dt.Language,
+                    RemoveStopWords = dt.RemoveStopWords
+                };
+            }
+
             snapshot = new PersistedModelState
             {
                 Version = PersistedModelVersion,
-                Categories = _categories.ToDictionary(
-                    pair => pair.Key,
-                    pair => new PersistedCategoryState
-                    {
-                        Tally = pair.Value.TokenTally,
-                        Tokens = pair.Value.TokenCounts.ToDictionary(
-                            token => token.Key,
-                            token => token.Value,
-                            StringComparer.OrdinalIgnoreCase)
-                    },
-                    StringComparer.OrdinalIgnoreCase)
+                Categories = categories,
+                Tokenizer = tokenizerState
             };
         }
         finally
@@ -287,6 +311,11 @@ public sealed class InMemoryNaiveBayesClassifier : ITextClassifier
             foreach (var category in nextCategories)
             {
                 _categories[category.Key] = category.Value;
+            }
+
+            if (model.Tokenizer is not null)
+            {
+                _tokenizer = new DefaultTextTokenizer(model.Tokenizer.Language, model.Tokenizer.RemoveStopWords);
             }
 
             RecalculateCategoryPriors();

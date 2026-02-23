@@ -66,12 +66,12 @@ No long-lived `NUGET_API_KEY` secret is required.
 
 ### Release flow
 
-1. Choose a package version (for example `2.1.0`).
+1. Choose a package version (for example `2.2.0`).
 2. Create and push a tag prefixed with `v`:
 
 ```bash
-git tag v2.1.0
-git push origin v2.1.0
+git tag v2.2.0
+git push origin v2.2.0
 ```
 
 3. Wait for workflow `release` to complete.
@@ -90,6 +90,12 @@ dotnet run --project src/Cscentamint.Api/Cscentamint.Api.csproj
 Optional auth can be configured with either:
 - `Auth:Token` configuration key
 - `auth-token` configuration key
+
+Tokenizer configuration (API mode):
+- `Tokenization:Language`: language for stemming and stopwords (default `english`)
+- `Tokenization:RemoveStopWords`: `true` or `false` (default `false`)
+
+When running in Development, Swagger/OpenAPI docs are available at `/swagger`.
 
 When auth is configured, all endpoints except `/healthz` and `/readyz` require:
 
@@ -133,6 +139,11 @@ classifier.SaveToFile("/tmp/cscentamint-model.bin");
 ITextClassifier loaded = new InMemoryNaiveBayesClassifier();
 loaded.LoadFromFile("/tmp/cscentamint-model.bin");
 ```
+
+Constructor options:
+- `new InMemoryNaiveBayesClassifier()`: default English tokenizer
+- `new InMemoryNaiveBayesClassifier(language, removeStopWords)`: e.g. `("spanish", true)` for Spanish with stopword removal
+- `new InMemoryNaiveBayesClassifier(tokenizer)`: custom tokenizer (config not persisted)
 
 Notes for library usage:
 - `Classify()` returns `PredictedCategory = null` and `Score = 0` when no category can be predicted.
@@ -420,13 +431,17 @@ Default tokenizer pipeline:
 - Unicode normalization (NFKC)
 - lowercasing
 - split on non-letter/non-digit boundaries
-- basic English stemming
+- language-specific stemming (default English)
+- optional stopword filtering
+
+Supported languages for stemming and stopwords: arabic, armenian, basque, catalan, danish, dutch, english, finnish, french, german, greek, hindi, hungarian, indonesian, irish, italian, lithuanian, nepali, norwegian, porter, portuguese, romanian, russian, serbian, spanish, swedish, tamil, turkish, yiddish. Unknown languages fall back to English.
 
 Scores are ranking values for comparison within the same model.
 
 ## Persistence behavior
 
 - Model schema is versioned.
+- When using the default tokenizer, language and removeStopWords are persisted and restored on Load. Legacy models without tokenizer config load successfully and keep the classifier’s pre-load tokenizer.
 - Load validates category names, token counts, and tally invariants.
 - Save uses temp-file + atomic replace.
 - Default file path for null/whitespace file args: `/tmp/cscentamint-model.bin` (development fallback).
@@ -446,7 +461,7 @@ dotnet test tests/Cscentamint.Core.UnitTests/Cscentamint.Core.UnitTests.csproj -
 dotnet test tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTests.csproj --configuration Release
 ```
 
-Both test projects enforce 100% line/branch/method coverage for production assemblies.
+Both test projects enforce coverage thresholds for production assemblies.
 
 CI (`.github/workflows/tests-and-coverage.yml`) includes:
 - coverage-gated tests
