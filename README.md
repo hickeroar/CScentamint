@@ -66,12 +66,12 @@ No long-lived `NUGET_API_KEY` secret is required.
 
 ### Release flow
 
-1. Choose a package version (for example `2.2.0`).
+1. Choose a package version (for example `2.2.1`).
 2. Create and push a tag prefixed with `v`:
 
 ```bash
-git tag v2.2.0
-git push origin v2.2.0
+git tag v2.2.1
+git push origin v2.2.1
 ```
 
 3. Wait for workflow `release` to complete.
