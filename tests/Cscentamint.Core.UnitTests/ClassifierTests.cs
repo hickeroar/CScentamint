@@ -237,6 +237,41 @@ public sealed class ClassifierTests
     }
 
     /// <summary>
+    /// Verifies classifier with language and removeStopWords constructor works.
+    /// </summary>
+    [Fact]
+    public void Classifier_WithLanguageAndRemoveStopWords_ClassifiesCorrectly()
+    {
+        var classifier = new InMemoryNaiveBayesClassifier("spanish", removeStopWords: true);
+        classifier.Train("deporte", "correr maratón");
+        classifier.Train("noticia", "periódico artículo");
+
+        var result = classifier.Classify("correr");
+        Assert.Equal("deporte", result.PredictedCategory);
+    }
+
+    /// <summary>
+    /// Verifies classifier with custom tokenizer does not persist tokenizer config.
+    /// </summary>
+    [Fact]
+    public void Classifier_WithCustomTokenizer_LoadDoesNotOverwriteTokenizer()
+    {
+        var custom = new PrefixTokenizer();
+        var classifier = new InMemoryNaiveBayesClassifier(custom);
+        classifier.Train("tech", "dotnet");
+
+        using var stream = new MemoryStream();
+        classifier.Save(stream);
+
+        stream.Position = 0;
+        var loaded = new InMemoryNaiveBayesClassifier(custom);
+        loaded.Load(stream);
+
+        var result = loaded.Classify("d");
+        Assert.Equal("tech", result.PredictedCategory);
+    }
+
+    /// <summary>
     /// Verifies classifier accepts an override tokenizer implementation.
     /// </summary>
     [Fact]

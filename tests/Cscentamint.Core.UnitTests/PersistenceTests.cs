@@ -245,6 +245,50 @@ public sealed class PersistenceTests
     }
 
     /// <summary>
+    /// Verifies save and load round-trips tokenizer config when using default tokenizer.
+    /// </summary>
+    [Fact]
+    public void SaveAndLoad_WithTokenizerConfig_PreservesTokenizer()
+    {
+        var source = new InMemoryNaiveBayesClassifier("spanish", removeStopWords: true);
+        source.Train("deporte", "correr maratón");
+        source.Train("noticia", "periódico artículo");
+
+        using var stream = new MemoryStream();
+        source.Save(stream);
+
+        stream.Position = 0;
+        var loaded = new InMemoryNaiveBayesClassifier();
+        loaded.Load(stream);
+
+        var prediction = loaded.Classify("correr");
+        Assert.Equal("deporte", prediction.PredictedCategory);
+    }
+
+    /// <summary>
+    /// Verifies loading legacy model without tokenizer config succeeds (backward compatibility).
+    /// </summary>
+    [Fact]
+    public void Load_LegacyModelWithoutTokenizer_Succeeds()
+    {
+        using var stream = CreateModelStream(new PersistedModelState
+        {
+            Version = 1,
+            Categories = new Dictionary<string, PersistedCategoryState>
+            {
+                ["spam"] = new() { Tally = 1, Tokens = new Dictionary<string, int> { ["offer"] = 1 } }
+            },
+            Tokenizer = null
+        });
+
+        var classifier = new InMemoryNaiveBayesClassifier();
+        classifier.Load(stream);
+
+        var prediction = classifier.Classify("offer");
+        Assert.Equal("spam", prediction.PredictedCategory);
+    }
+
+    /// <summary>
     /// Verifies deserializing null model payload is rejected.
     /// </summary>
     [Fact]

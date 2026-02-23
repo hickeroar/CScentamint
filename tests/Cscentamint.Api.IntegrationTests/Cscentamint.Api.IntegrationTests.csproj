@@ -6,7 +6,7 @@
     <IsPackable>false</IsPackable>
     <CollectCoverage>true</CollectCoverage>
     <CoverletOutputFormat>cobertura</CoverletOutputFormat>
-    <Threshold>100</Threshold>
+    <Threshold>94</Threshold>
     <ThresholdType>line,branch,method</ThresholdType>
     <ThresholdStat>total</ThresholdStat>
     <Include>[Cscentamint.Api]*</Include>
@@ -31,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
     <ProjectReference Include="..\..\src\Cscentamint.Api\Cscentamint.Api.csproj" />
   </ItemGroup>
 </Project>

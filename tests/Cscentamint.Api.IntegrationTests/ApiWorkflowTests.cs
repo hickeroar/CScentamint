@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Cscentamint.Api.Contracts;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace Cscentamint.Api.IntegrationTests;
@@ -210,6 +211,43 @@ public sealed class ApiWorkflowTests(WebApplicationFactory<Program> factory)
         var payload = await classifyResponse.Content.ReadFromJsonAsync<ClassificationResponse>();
         Assert.NotNull(payload);
         Assert.Equal("promo", payload.Category);
+    }
+
+    /// <summary>
+    /// Verifies API uses configured tokenizer when Tokenization:Language is set.
+    /// </summary>
+    [Fact]
+    public async Task Classify_WithSpanishConfig_UsesSpanishStemming()
+    {
+        var spanishFactory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Tokenization:Language"] = "spanish",
+                    ["Tokenization:RemoveStopWords"] = "false"
+                });
+            });
+        });
+
+        using var spanishClient = spanishFactory.CreateClient();
+        await spanishClient.DeleteAsync("/api/model");
+        await spanishClient.PostAsJsonAsync(
+            "/api/categories/deporte/samples",
+            new TextDocumentRequest { Text = "correr maratón" });
+        await spanishClient.PostAsJsonAsync(
+            "/api/categories/noticia/samples",
+            new TextDocumentRequest { Text = "periódico artículo" });
+
+        var response = await spanishClient.PostAsJsonAsync(
+            "/api/classifications",
+            new TextDocumentRequest { Text = "correr" });
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("deporte", payload.Category);
     }
 
     /// <summary>

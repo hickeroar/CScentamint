@@ -26,6 +26,7 @@ public sealed class CategoriesController(ITextClassifier classifier) : Controlle
         [FromRoute, Required, StringLength(64, MinimumLength = 1), RegularExpression("^[a-zA-Z0-9_-]+$")] string category,
         [FromBody] TextDocumentRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
         classifier.Train(category, request.Text);
         return NoContent();
     }
@@ -43,6 +44,7 @@ public sealed class CategoriesController(ITextClassifier classifier) : Controlle
         [FromRoute, Required, StringLength(64, MinimumLength = 1), RegularExpression("^[a-zA-Z0-9_-]+$")] string category,
         [FromBody] TextDocumentRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
         classifier.Untrain(category, request.Text);
         return NoContent();
     }

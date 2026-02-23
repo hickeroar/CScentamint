@@ -1,6 +1,22 @@
 namespace Cscentamint.Core;
 
 /// <summary>
+/// Serializable tokenizer configuration for persistence.
+/// </summary>
+public sealed record PersistedTokenizerState
+{
+    /// <summary>
+    /// Language code for stemming and stopwords.
+    /// </summary>
+    public required string Language { get; init; }
+
+    /// <summary>
+    /// Whether stop words are filtered out.
+    /// </summary>
+    public required bool RemoveStopWords { get; init; }
+}
+
+/// <summary>
 /// Serializable model persistence root.
 /// </summary>
 public sealed record PersistedModelState
@@ -14,6 +30,11 @@ public sealed record PersistedModelState
     /// Gets or sets serialized category data keyed by category name.
     /// </summary>
     public required Dictionary<string, PersistedCategoryState> Categories { get; init; }
+
+    /// <summary>
+    /// Gets or sets tokenizer configuration when using the default tokenizer. Omitted for custom tokenizers.
+    /// </summary>
+    public PersistedTokenizerState? Tokenizer { get; init; }
 }
 
 /// <summary>

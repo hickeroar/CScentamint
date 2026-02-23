@@ -22,6 +22,7 @@ public sealed class ClassificationsController(ITextClassifier classifier) : Cont
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public ActionResult<ClassificationResponse> Create([FromBody] TextDocumentRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
         var prediction = classifier.Classify(request.Text);
         return Ok(new ClassificationResponse(prediction.PredictedCategory, prediction.Score));
     }
