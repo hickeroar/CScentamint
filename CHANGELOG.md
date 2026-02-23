@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented in this file.
 
+## v2.2.1 - 2026-02-23
+
+### Changed
+
+- Terminology updated from "Bayes" to "Bayesian" in documentation and NuGet package metadata (description, package tags, Swagger description, and XML docs).
+
+## v2.2.0 - 2026-02-23
+
+### Added
+
+- **Multi-language stemming** via `StemmerFactory` and `DefaultTextTokenizer`, aligned with stemmer-supported languages.
+- **Stopwords module** (`Stopwords.Get`, `Supported`, `SupportedLanguages`) with built-in stopword lists for supported languages.
+- **Tokenizer persistence**: model save/load now persists tokenizer config (language, `removeStopWords`).
+- `InMemoryNaiveBayesClassifier` overloads for language, `removeStopWords`, and custom tokenizer.
+- Swagger/OpenAPI metadata and XML comment documentation for the API.
+- Null-safety for JSON body parameters in API controllers (`ArgumentNullException.ThrowIfNull`).
+- `ITextTokenizer` DI wiring with `Tokenization:Language` and `Tokenization:RemoveStopWords` configuration.
+
+### Changed
+
+- `PersistedModelState` extended with tokenizer state for round-trip persistence.
+- `DefaultTextTokenizer` supports configurable language and stopword removal.
+
 ## v2.1.0 - 2026-02-22
 
 ### Added
