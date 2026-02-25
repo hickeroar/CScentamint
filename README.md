@@ -87,13 +87,44 @@ You can also run the workflow manually from GitHub Actions using `workflow_dispa
 dotnet run --project src/Cscentamint.Api/Cscentamint.Api.csproj
 ```
 
-Optional auth can be configured with either:
+Server binds to `http://0.0.0.0:8000` by default.
+
+CLI options (pass after `--` when using `dotnet run`):
+
+| Option | Description |
+|--------|-------------|
+| `--host` | Host interface to bind. (default: 0.0.0.0) |
+| `--port` | Port to bind. (default: 8000) |
+| `--auth-token` | Optional bearer token for non-probe endpoints. |
+| `--language` | Language code for stemmer and stop words. (default: english) |
+| `--remove-stop-words` | Filter common stop words (the, is, and, etc.). |
+| `--verbose` | Log requests, responses, and classifier operations to stderr. |
+| `--help`, `-h` | Show all options and exit. |
+
+Environment variable equivalents:
+
+| Variable | Notes |
+|----------|-------|
+| `CSCENTAMINT_HOST` | |
+| `CSCENTAMINT_PORT` | |
+| `CSCENTAMINT_AUTH_TOKEN` | |
+| `CSCENTAMINT_LANGUAGE` | |
+| `CSCENTAMINT_REMOVE_STOP_WORDS` | `1`, `true`, or `yes` = enabled |
+| `CSCENTAMINT_VERBOSE` | `1`, `true`, or `yes` = enabled |
+
+Example with options:
+
+```bash
+dotnet run --project src/Cscentamint.Api/Cscentamint.Api.csproj -- --port 8000 --auth-token secret
+```
+
+Optional auth can also be configured with:
 - `Auth:Token` configuration key
 - `auth-token` configuration key
 
 Tokenizer configuration (API mode):
 - `Tokenization:Language`: language for stemming and stopwords (default `english`)
-- `Tokenization:RemoveStopWords`: `true` or `false` (default `false`)
+- `Tokenization:RemoveStopWords`: `true`, `1`, or `yes` = enabled; otherwise disabled (default `false`)
 
 When running in Development, Swagger/OpenAPI docs are available at `/swagger`.
 
@@ -205,7 +236,7 @@ Request shape for JSON endpoints:
 `POST /api/categories/{category}/samples` -> `204 No Content`
 
 ```bash
-curl -i -X POST "http://localhost:5000/api/categories/spam/samples" \
+curl -i -X POST "http://localhost:8000/api/categories/spam/samples" \
   -H "Content-Type: application/json" \
   -d '{ "text": "buy now limited offer click here" }'
 ```
@@ -215,7 +246,7 @@ curl -i -X POST "http://localhost:5000/api/categories/spam/samples" \
 `DELETE /api/categories/{category}/samples` -> `204 No Content`
 
 ```bash
-curl -i -X DELETE "http://localhost:5000/api/categories/spam/samples" \
+curl -i -X DELETE "http://localhost:8000/api/categories/spam/samples" \
   -H "Content-Type: application/json" \
   -d '{ "text": "buy now limited offer click here" }'
 ```
@@ -225,7 +256,7 @@ curl -i -X DELETE "http://localhost:5000/api/categories/spam/samples" \
 `POST /api/scores` -> `200 OK`
 
 ```bash
-curl -s -X POST "http://localhost:5000/api/scores" \
+curl -s -X POST "http://localhost:8000/api/scores" \
   -H "Content-Type: application/json" \
   -d '{ "text": "limited offer today" }'
 ```
@@ -244,7 +275,7 @@ Example response:
 `POST /api/classifications` -> `200 OK`
 
 ```bash
-curl -s -X POST "http://localhost:5000/api/classifications" \
+curl -s -X POST "http://localhost:8000/api/classifications" \
   -H "Content-Type: application/json" \
   -d '{ "text": "limited offer today" }'
 ```
@@ -272,7 +303,7 @@ When no category can be predicted:
 `DELETE /api/model` -> `204 No Content`
 
 ```bash
-curl -i -X DELETE "http://localhost:5000/api/model"
+curl -i -X DELETE "http://localhost:8000/api/model"
 ```
 
 ---
@@ -286,7 +317,7 @@ Root endpoints use plain text request bodies rather than JSON.
 `GET /info` -> `200 OK`
 
 ```bash
-curl -s "http://localhost:5000/info"
+curl -s "http://localhost:8000/info"
 ```
 
 Example response:
@@ -313,7 +344,7 @@ Example response:
 `POST /train/{category}` -> `200 OK`
 
 ```bash
-curl -s -X POST "http://localhost:5000/train/spam" \
+curl -s -X POST "http://localhost:8000/train/spam" \
   -H "Content-Type: text/plain" \
   --data "buy now limited offer click here"
 ```
@@ -338,7 +369,7 @@ Example response:
 `POST /untrain/{category}` -> `200 OK`
 
 ```bash
-curl -s -X POST "http://localhost:5000/untrain/spam" \
+curl -s -X POST "http://localhost:8000/untrain/spam" \
   -H "Content-Type: text/plain" \
   --data "buy now limited offer click here"
 ```
@@ -348,7 +379,7 @@ curl -s -X POST "http://localhost:5000/untrain/spam" \
 `POST /classify` -> `200 OK`
 
 ```bash
-curl -s -X POST "http://localhost:5000/classify" \
+curl -s -X POST "http://localhost:8000/classify" \
   -H "Content-Type: text/plain" \
   --data "limited offer today"
 ```
@@ -376,7 +407,7 @@ When no category can be predicted:
 `POST /score` -> `200 OK`
 
 ```bash
-curl -s -X POST "http://localhost:5000/score" \
+curl -s -X POST "http://localhost:8000/score" \
   -H "Content-Type: text/plain" \
   --data "limited offer today"
 ```
@@ -386,7 +417,7 @@ curl -s -X POST "http://localhost:5000/score" \
 `POST /flush` -> `200 OK`
 
 ```bash
-curl -s -X POST "http://localhost:5000/flush" \
+curl -s -X POST "http://localhost:8000/flush" \
   -H "Content-Type: text/plain" \
   --data ""
 ```
@@ -405,8 +436,8 @@ Example response:
 `GET /healthz` and `GET /readyz`:
 
 ```bash
-curl -s "http://localhost:5000/healthz"
-curl -i "http://localhost:5000/readyz"
+curl -s "http://localhost:8000/healthz"
+curl -i "http://localhost:8000/readyz"
 ```
 
 Probe response examples:

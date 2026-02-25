@@ -28,8 +28,7 @@ dotnet test tests/Cscentamint.Api.IntegrationTests/Cscentamint.Api.IntegrationTe
 
 Coverage policy:
 
-- `Cscentamint.Core.UnitTests` enforces 100% line/branch/method coverage for `Cscentamint.Core`.
-- `Cscentamint.Api.IntegrationTests` enforces 100% line/branch/method coverage for `Cscentamint.Api`.
+- `Cscentamint.Core.UnitTests` and `Cscentamint.Api.IntegrationTests` enforce line, branch, and method coverage thresholds (see each project's `.csproj`). The goal is 100% coverage; thresholds are set to the current achieved minimums and should be raised as gaps are covered.
 
 ## CI workflow
 

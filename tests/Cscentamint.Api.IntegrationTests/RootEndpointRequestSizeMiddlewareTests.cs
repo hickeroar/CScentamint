@@ -60,4 +60,98 @@ public sealed class RootEndpointRequestSizeMiddlewareTests
         Assert.True(nextInvoked);
         Assert.Equal(0, bodyPositionSeenByNext);
     }
+
+    /// <summary>
+    /// Verifies POST with ContentLength over limit is rejected.
+    /// </summary>
+    [Fact]
+    public async Task InvokeAsync_PostWithContentLengthOverLimit_ReturnsPayloadTooLarge()
+    {
+        var nextInvoked = false;
+        var middleware = new RootEndpointRequestSizeMiddleware(_ =>
+        {
+            nextInvoked = true;
+            return Task.CompletedTask;
+        });
+
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Post;
+        context.Request.Path = "/classify";
+        var bodySize = RootEndpointRequestSizeMiddleware.MaxRequestBodyBytes + 1;
+        context.Request.ContentLength = bodySize;
+        context.Request.Body = new MemoryStream(new byte[checked((int)bodySize)]);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, context.Response.StatusCode);
+        Assert.False(nextInvoked);
+    }
+
+    /// <summary>
+    /// Verifies POST with ContentLength under limit calls next.
+    /// </summary>
+    [Fact]
+    public async Task InvokeAsync_PostWithContentLengthWithinLimit_CallsNext()
+    {
+        var nextInvoked = false;
+        var middleware = new RootEndpointRequestSizeMiddleware(_ =>
+        {
+            nextInvoked = true;
+            return Task.CompletedTask;
+        });
+
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Post;
+        context.Request.Path = "/train/spam";
+        context.Request.ContentLength = 100;
+        context.Request.Body = new MemoryStream(new byte[100]);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(nextInvoked);
+    }
+
+    /// <summary>
+    /// Verifies GET requests skip the middleware (AppliesTo false).
+    /// </summary>
+    [Fact]
+    public async Task InvokeAsync_GetRequest_CallsNext()
+    {
+        var nextInvoked = false;
+        var middleware = new RootEndpointRequestSizeMiddleware(_ =>
+        {
+            nextInvoked = true;
+            return Task.CompletedTask;
+        });
+
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Get;
+        context.Request.Path = "/classify";
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(nextInvoked);
+    }
+
+    /// <summary>
+    /// Verifies path not in /train, /untrain, /classify, /score skips the middleware.
+    /// </summary>
+    [Fact]
+    public async Task InvokeAsync_NonApplicablePath_CallsNext()
+    {
+        var nextInvoked = false;
+        var middleware = new RootEndpointRequestSizeMiddleware(_ =>
+        {
+            nextInvoked = true;
+            return Task.CompletedTask;
+        });
+
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Post;
+        context.Request.Path = "/api/other";
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(nextInvoked);
+    }
 }

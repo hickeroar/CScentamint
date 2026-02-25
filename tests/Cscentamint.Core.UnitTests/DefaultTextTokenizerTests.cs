@@ -79,6 +79,20 @@ public sealed class DefaultTextTokenizerTests
     }
 
     /// <summary>
+    /// Verifies null or empty language falls back to English.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Tokenize_NullOrEmptyLanguage_FallsBackToEnglish(string? language)
+    {
+        var fallbackTokenizer = new DefaultTextTokenizer(language);
+        var tokens = fallbackTokenizer.Tokenize("offers boxes").ToArray();
+        Assert.Equal(["offer", "box"], tokens);
+    }
+
+    /// <summary>
     /// Verifies unknown language falls back to English.
     /// </summary>
     [Fact]
@@ -103,6 +117,71 @@ public sealed class DefaultTextTokenizerTests
         Assert.DoesNotContain("and", tokens);
         Assert.True(tokens.Length >= 2);
         Assert.Contains("jump", tokens);
+    }
+
+    /// <summary>
+    /// Verifies token that stems to a stopword is filtered (covers FlushToken stopword branch).
+    /// Uses "being" which stems to "be" - a stopword that stays non-empty after stemming.
+    /// </summary>
+    [Fact]
+    public void Tokenize_RemoveStopWords_TokenStemmingToStopword_IsFiltered()
+    {
+        var tokenizerWithStopwords = new DefaultTextTokenizer("english", removeStopWords: true);
+        var tokens = tokenizerWithStopwords.Tokenize("being and being").ToArray();
+        Assert.Empty(tokens);
+    }
+
+    /// <summary>
+    /// Verifies "be" (stopword that stems to itself) is filtered via _stemmedStopwords.Contains (covers FlushToken branch).
+    /// </summary>
+    [Fact]
+    public void Tokenize_RemoveStopWords_StopwordStemmingToSelf_IsFiltered()
+    {
+        var tokenizerWithStopwords = new DefaultTextTokenizer("english", removeStopWords: true);
+        var tokens = tokenizerWithStopwords.Tokenize("be jumps").ToArray();
+        Assert.DoesNotContain("be", tokens);
+        Assert.Single(tokens);
+        Assert.Equal("jump", tokens[0]);
+    }
+
+    /// <summary>
+    /// Verifies "doing" (stems to "do") is filtered via _stemmedStopwords.Contains (covers FlushToken stopword branch).
+    /// </summary>
+    [Fact]
+    public void Tokenize_RemoveStopWords_DoingStemsToDo_IsFiltered()
+    {
+        var tokenizerWithStopwords = new DefaultTextTokenizer("english", removeStopWords: true);
+        var tokens = tokenizerWithStopwords.Tokenize("doing jumps").ToArray();
+        Assert.DoesNotContain("do", tokens);
+        Assert.Single(tokens);
+        Assert.Equal("jump", tokens[0]);
+    }
+
+    /// <summary>
+    /// Verifies "running" (stems to "run") is filtered via _stemmedStopwords.Contains (covers FlushToken stopword branch).
+    /// </summary>
+    [Fact]
+    public void Tokenize_RemoveStopWords_RunningStemsToRun_IsFiltered()
+    {
+        var tokenizerWithStopwords = new DefaultTextTokenizer("english", removeStopWords: true);
+        var tokens = tokenizerWithStopwords.Tokenize("running walks").ToArray();
+        Assert.DoesNotContain("run", tokens);
+        Assert.Single(tokens);
+        Assert.Equal("walk", tokens[0]);
+    }
+
+    /// <summary>
+    /// Verifies stopword branch via custom stemmer that returns stopword stem (covers FlushToken _stemmedStopwords.Contains true).
+    /// </summary>
+    [Fact]
+    public void Tokenize_RemoveStopWords_CustomStemmerReturnsStopword_IsFiltered()
+    {
+        static string Stem(string w) => w switch { "doing" => "do", "jumps" => "jump", _ => w };
+        var tokenizer = new DefaultTextTokenizer("english", removeStopWords: true, stemmerOverride: Stem);
+        var tokens = tokenizer.Tokenize("doing jumps").ToArray();
+        Assert.DoesNotContain("do", tokens);
+        Assert.Single(tokens);
+        Assert.Equal("jump", tokens[0]);
     }
 
     /// <summary>

@@ -6,7 +6,7 @@
     <IsPackable>false</IsPackable>
     <CollectCoverage>true</CollectCoverage>
     <CoverletOutputFormat>cobertura</CoverletOutputFormat>
-    <Threshold>94</Threshold>
+    <Threshold>100</Threshold>
     <ThresholdType>line,branch,method</ThresholdType>
     <ThresholdStat>total</ThresholdStat>
     <Include>[Cscentamint.Api]*</Include>
@@ -34,4 +34,10 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <ProjectReference Include="..\..\src\Cscentamint.Api\Cscentamint.Api.csproj" />
   </ItemGroup>
+
+  <Target Name="CopyApiXml" AfterTargets="Build">
+    <Copy SourceFiles="..\..\src\Cscentamint.Api\bin\$(Configuration)\$(TargetFramework)\Cscentamint.Api.xml"
+          DestinationFiles="$(OutputPath)Cscentamint.Api.xml"
+          Condition="Exists('..\..\src\Cscentamint.Api\bin\$(Configuration)\$(TargetFramework)\Cscentamint.Api.xml')" />
+  </Target>
 </Project>
