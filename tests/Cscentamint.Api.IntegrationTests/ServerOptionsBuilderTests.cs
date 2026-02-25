@@ -16,7 +16,8 @@ public sealed class ServerOptionsBuilderTests
     public void Build_NoConfigOrEnv_ReturnsDefaults()
     {
         var config = new ConfigurationBuilder().Build();
-        var options = ServerOptionsBuilder.Build(config);
+        string? GetEnv(string _) => null;
+        var options = ServerOptionsBuilder.Build(config, GetEnv);
 
         Assert.Equal("0.0.0.0", options.Host);
         Assert.Equal("8000", options.Port);
@@ -105,7 +106,8 @@ public sealed class ServerOptionsBuilderTests
             .AddInMemoryCollection(new Dictionary<string, string?> { ["verbose"] = value })
             .Build();
 
-        var options = ServerOptionsBuilder.Build(config);
+        string? GetEnv(string _) => null;
+        var options = ServerOptionsBuilder.Build(config, GetEnv);
 
         Assert.False(options.Verbose);
     }
@@ -176,7 +178,8 @@ public sealed class ServerOptionsBuilderTests
             .AddInMemoryCollection(new Dictionary<string, string?> { ["verbose"] = "x" })
             .Build();
 
-        var options = ServerOptionsBuilder.Build(config);
+        string? GetEnv(string _) => null;
+        var options = ServerOptionsBuilder.Build(config, GetEnv);
 
         Assert.False(options.Verbose);
     }
