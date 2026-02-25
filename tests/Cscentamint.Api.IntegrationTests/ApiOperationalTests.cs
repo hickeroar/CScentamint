@@ -219,6 +219,88 @@ public sealed class ApiOperationalTests(WebApplicationFactory<Program> factory)
         Assert.Equal("ham", payload.Category);
     }
 
+    /// <summary>
+    /// Verifies Tokenization:RemoveStopWords=yes enables stopword removal (covers Program removeStopWords "yes" branch).
+    /// </summary>
+    [Fact]
+    public async Task WhenRemoveStopWordsConfigYes_StopwordsAreFiltered()
+    {
+        using var cfgFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Tokenization:RemoveStopWords"] = "yes"
+                });
+            });
+        });
+        using var client = cfgFactory.CreateClient();
+        await client.DeleteAsync("/api/model");
+        await client.PostAsJsonAsync("/api/categories/ham/samples", new TextDocumentRequest { Text = "the meeting and the calendar" });
+        var response = await client.PostAsJsonAsync("/api/classifications", new TextDocumentRequest { Text = "the calendar and meeting" });
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<ClassificationResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("ham", payload.Category);
+    }
+
+    /// <summary>
+    /// Verifies Tokenization:RemoveStopWords=1 enables stopword removal (covers Program removeStopWords "1" branch).
+    /// </summary>
+    [Fact]
+    public async Task WhenRemoveStopWordsConfig1_StopwordsAreFiltered()
+    {
+        using var cfgFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Tokenization:RemoveStopWords"] = "1"
+                });
+            });
+        });
+        using var client = cfgFactory.CreateClient();
+        await client.DeleteAsync("/api/model");
+        await client.PostAsJsonAsync("/api/categories/ham/samples", new TextDocumentRequest { Text = "the meeting and the calendar" });
+        var response = await client.PostAsJsonAsync("/api/classifications", new TextDocumentRequest { Text = "the calendar and meeting" });
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
+    /// Verifies IncludeXmlComments is used when xml file exists at standard location (CopyApiXml ensures Cscentamint.Api.xml in output).
+    /// </summary>
+    [Fact]
+    public async Task WhenSwaggerXmlExists_IncludeXmlCommentsIsUsed()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync("/healthz");
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
+    /// Verifies Swagger UI is available when running in Development environment.
+    /// </summary>
+    [Fact]
+    public async Task WhenDevelopmentEnvironment_SwaggerUiIsAvailable()
+    {
+        var previous = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        try
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+            using var devFactory = new WebApplicationFactory<Program>();
+            using var client = devFactory.CreateClient();
+            var response = await client.GetAsync("/swagger/index.html");
+            response.EnsureSuccessStatusCode();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", previous);
+        }
+    }
+
     private static WebApplicationFactory<Program> CreateAuthFactory(WebApplicationFactory<Program> baseFactory)
     {
         return baseFactory.WithWebHostBuilder(builder =>

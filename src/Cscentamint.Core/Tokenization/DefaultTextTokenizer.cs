@@ -20,10 +20,17 @@ public sealed class DefaultTextTokenizer : ITextTokenizer
     /// <param name="language">Language code for stemming and stopwords (e.g. "english", "spanish"). Default "english".</param>
     /// <param name="removeStopWords">When true, filter out stop words. Default false.</param>
     public DefaultTextTokenizer(string? language = "english", bool removeStopWords = false)
+        : this(language, removeStopWords, null)
+    {
+    }
+
+    internal DefaultTextTokenizer(string? language, bool removeStopWords, Func<string, string>? stemmerOverride)
     {
         _language = StemmerFactory.ResolveLanguage(language);
         _removeStopWords = removeStopWords;
-        _stemmer = StemmerFactory.CreateThreadLocalStemmer(_language);
+        _stemmer = stemmerOverride != null
+            ? new ThreadLocal<Func<string, string>>(() => stemmerOverride)
+            : StemmerFactory.CreateThreadLocalStemmer(_language);
 
         if (_removeStopWords && Stopwords.Get(_language) is { } rawStopwords)
         {
@@ -88,12 +95,7 @@ public sealed class DefaultTextTokenizer : ITextTokenizer
         current.Clear();
 
         token = stemmer(token);
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            return;
-        }
-
-        if (_stemmedStopwords is not null && _stemmedStopwords.Contains(token))
+        if (string.IsNullOrWhiteSpace(token) || (_stemmedStopwords?.Contains(token) == true))
         {
             return;
         }

@@ -1,11 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cscentamint.Core.UnitTests" />
+  </ItemGroup>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>true</IsPackable>
     <PackageId>CScentamint</PackageId>
-    <VersionPrefix>2.2.1</VersionPrefix>
+    <VersionPrefix>2.3.0</VersionPrefix>
     <Authors>Ryan Vennell</Authors>
     <Description>Trainable naive Bayesian text classification library with optional persistence for .NET.</Description>
     <PackageTags>naive-bayesian;text-classification;nlp;machine-learning;dotnet</PackageTags>

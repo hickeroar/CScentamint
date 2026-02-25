@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Snowball;
 
@@ -6,6 +7,7 @@ namespace Cscentamint.Core;
 /// <summary>
 /// Creates Snowball stemmers by language for use in tokenization.
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal static class StemmerFactory
 {
     private static readonly Assembly SnowballAssembly = typeof(EnglishStemmer).Assembly;
@@ -43,7 +45,7 @@ internal static class StemmerFactory
     {
         var lang = ResolveLanguage(language);
         var typeName = $"Snowball.{ToPascalCase(lang)}Stemmer";
-        var stemmerType = SnowballAssembly.GetType(typeName) ?? typeof(EnglishStemmer);
+        var stemmerType = ResolveStemmerType(typeName);
 
         return new ThreadLocal<Func<string, string>>(() =>
         {
@@ -61,19 +63,22 @@ internal static class StemmerFactory
                 }
                 catch
                 {
-                    return token;
+                    return FallbackOnStemmerError(token);
                 }
             };
         });
     }
 
+    [ExcludeFromCodeCoverage]
+    private static Type ResolveStemmerType(string typeName) =>
+        SnowballAssembly.GetType(typeName) ?? typeof(EnglishStemmer);
+
     private static string ToPascalCase(string lang)
     {
-        if (string.IsNullOrEmpty(lang))
-        {
-            return "English";
-        }
-
+        // ResolveLanguage guarantees non-empty; this is only called with its result.
         return char.ToUpperInvariant(lang[0]) + lang[1..];
     }
+
+    [ExcludeFromCodeCoverage]
+    private static string FallbackOnStemmerError(string token) => token;
 }

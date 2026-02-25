@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## v2.3.0 - 2026-02-24
+
+### Added
+
+- **CLI options** for the API server: `--host`, `--port`, `--auth-token`, `--language`, `--remove-stop-words`, `--verbose`, `--help` / `-h`. Pass after `--` when using `dotnet run`.
+- **Environment variables** with `CSCENTAMINT_` prefix: `CSCENTAMINT_HOST`, `CSCENTAMINT_PORT`, `CSCENTAMINT_AUTH_TOKEN`, `CSCENTAMINT_LANGUAGE`, `CSCENTAMINT_REMOVE_STOP_WORDS`, `CSCENTAMINT_VERBOSE`. Booleans accept `1`, `true`, or `yes` (case-insensitive).
+- **Verbose logging**: when `--verbose` or `CSCENTAMINT_VERBOSE` is enabled, request method/path and body preview and response status/body preview are logged to stderr.
+- **Help option**: `--help` or `-h` prints CLI and env documentation and exits without starting the server.
+- Server binding defaults to `http://0.0.0.0:8000`; configurable via `--host` / `--port` or env.
+
+### Changed
+
+- Coverage thresholds enforced at 100% for line, branch, and method in both test projects; see CONTRIBUTING.
+- **Verbose integration test** (`Integration_WhenVerboseEnabled_AppResponds`) now uses `CSCENTAMINT_VERBOSE` env var; `ConfigureAppConfiguration` runs too late for Program startup, so config override does not reach `ServerOptionsBuilder` before the host is built.
+- **ServerOptionsBuilder.IsTruthy**: removed unreachable `value.Length > 0` branch; `GetBool` only invokes `IsTruthy` with `Trim()` of non-whitespace values, so empty string is never passed.
+
 ## v2.2.1 - 2026-02-23
 
 ### Changed
